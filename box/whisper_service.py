@@ -23,6 +23,11 @@ os.environ.setdefault("USE_TORCH", "0")
 os.environ.setdefault("USE_TF", "0")
 os.environ.setdefault("USE_FLAX", "0")
 os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+# Offline box: the tokenizer must load from cache INSTANTLY. Without
+# these, AutoTokenizer phones huggingface.co on every service start and
+# an internet-less venue costs 5 retries x 8 s of dead STT.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 import socket
 import subprocess

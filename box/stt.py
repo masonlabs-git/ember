@@ -49,6 +49,8 @@ def _via_service(wav_path: str) -> str:
 def _via_cli(wav_path: str) -> str:
     env = dict(os.environ)
     env["PATH"] = os.path.expanduser("~/.local/bin") + ":" + env.get("PATH", "")
+    env["HF_HUB_OFFLINE"] = "1"       # no internet != slow STT
+    env["TRANSFORMERS_OFFLINE"] = "1"
     proc = subprocess.run(
         ["python", "-m", _MODULE, "--audio", wav_path, "--arch", "hailo10h"],
         cwd=os.path.expanduser("~/hailo-apps"),

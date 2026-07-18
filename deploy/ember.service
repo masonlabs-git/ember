@@ -8,7 +8,7 @@ WorkingDirectory=/home/caleb/bugout-box
 Environment=PYTHONUNBUFFERED=1
 ExecStartPre=-/usr/bin/amixer -c Plus sset PCM 100% unmute
 ExecStart=/usr/bin/python3 /home/caleb/bugout-box/run.py
-Restart=on-failure
+Restart=always
 RestartSec=5
 
 [Install]
