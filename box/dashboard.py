@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, redirect, request
 
-from . import config, llm, persona, retrieval, scribe
+from . import briefing, config, extract, llm, persona, retrieval, scribe
 from .brain import EVENTS, emit
 
 app = Flask(__name__)
@@ -48,8 +48,9 @@ button{{background:#2f6a2f;color:#fff}}
 <header><h1>&#128230; bug-out box</h1>
 <span class=badge>OFFLINE &#10003;</span>
 <span class=badge ok>RAM {ram}</span>
-<nav><a href=/>mind</a><a href=/board>board</a><a href=/supplies>supplies</a>
-<a href=/chat>ask</a></nav></header><main>{body}</main>"""
+<nav><a href=/>mind</a><a href=/board>board</a><a href=/intake>intake</a>
+<a href=/supplies>supplies</a><a href=/brief>brief</a><a href=/chat>ask</a>
+</nav></header><main>{body}</main>"""
 
 
 def ram() -> str:
@@ -143,6 +144,52 @@ def chat():
     return page(f"<div class=card><b>Q:</b> {html.escape(q)}</div>"
                 f"<div class=card>{html.escape(reply)}</div>{cites}"
                 f"<a href=/chat>ask another</a>")
+
+
+@app.get("/intake")
+def intake_form():
+    return page("""<form method=post action=/intake class=card>
+      <input name=names style="width:90%" placeholder="household names (comma-separated)"><br><br>
+      <input name=medical style="width:90%" placeholder="medical needs / allergies"><br><br>
+      <input name=missing style="width:90%" placeholder="anyone unaccounted for"><br><br>
+      <input name=phone style="width:60%" placeholder="phone (optional)"><br><br>
+      <button>register</button></form>
+      <div class=card><small>Consent: photos are taken only if the arrival
+      agrees, used solely for family reunification, and never leave this box.
+      </small></div>""")
+
+
+@app.post("/intake")
+def intake_submit():
+    names = request.form.get("names", "").strip()
+    if not names:
+        return redirect("/intake")
+    _, s = conns()
+    rid = scribe.register(s, names, request.form.get("medical", ""),
+                          request.form.get("missing", ""),
+                          request.form.get("phone", ""))
+    emit("registered", id=rid, names=names)
+    return redirect("/board")
+
+
+@app.get("/brief")
+def brief():
+    _, s = conns()
+    text = briefing.generate(s) if scribe.recent_log(s) else \
+        "No activity logged yet this shift."
+    return page(f"<div class=card><b>Shift briefing</b><br><br>"
+                f"{html.escape(text)}</div>")
+
+
+@app.post("/supply")
+def supply_add():
+    """Voice/text supply logging: 'received 40 blankets'."""
+    text = request.form.get("text", "")
+    parsed = extract.parse_supply(text)
+    if parsed:
+        _, s = conns()
+        scribe.supply(s, parsed["item"], parsed["delta"], parsed["unit"])
+    return redirect("/supplies")
 
 
 @app.get("/api/state")
