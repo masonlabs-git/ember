@@ -135,10 +135,21 @@ ACK_LINES = ("Checking my field manuals.",
              "Let me check my references.")
 
 
+_WAKE_ACK: list[str] = []
+
+
 def prepare_acks(lines: Iterable[str] = ACK_LINES) -> None:
-    """Synthesize the acknowledgment lines once (boot time)."""
+    """Synthesize the acknowledgment + wake-response lines once (boot)."""
     for line in lines:
         _ACKS.append(synth(line, config.VOICE_EN))
+    if not _WAKE_ACK:
+        _WAKE_ACK.append(synth("Yes? I'm listening.", config.VOICE_EN))
+
+
+def play_wake_ack() -> None:
+    """Instant response to a bare 'hey Ember' — pre-synthesized."""
+    if _WAKE_ACK:
+        play(_WAKE_ACK[0])
 
 
 def next_ack() -> str | None:

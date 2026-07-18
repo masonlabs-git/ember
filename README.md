@@ -1,6 +1,7 @@
-# bug-out box
+# EMBER — the bug-out box
 
-An offline emergency-preparedness AI in a box. Raspberry Pi 5 + Hailo-10H NPU,
+**Say "Hey Ember" and ask.** An offline emergency-preparedness AI in a box.
+Raspberry Pi 5 + Hailo-10H NPU,
 Gemma 4 E2B on-device, voice in / voice out, grounded in a local survival
 corpus with citations. No cloud. No subscription. The internet being gone is
 the use case.

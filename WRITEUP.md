@@ -1,4 +1,4 @@
-# bug-out box — Kaggle Writeup (draft)
+# EMBER — the bug-out box — Kaggle Writeup (draft)
 
 _Build with Gemma: JustBuild — Track 1: On-Device AI with Gemma 4_
 
@@ -142,7 +142,12 @@ How it got there (the engineering story, all measured on-device):
    `nice(4)` on the brain so piper bursts stop stealing ollama's cores.
 6. Coach mode: one-step-at-a-time enforced by a 36-token cap in code.
 
-Remaining: (1) live-mic VAD front-end (loop code exists in box/audio.py +
-brain.py, just needs wiring to the resident STT), (2) rename bug-out box
--> EMBER (repo, code, TTS intro, AP SSID), (3) print lid today (tub
-printed overnight).
+Live voice: **"Hey Ember" wake word** — every utterance is transcribed on
+the NPU (fast enough that no hotword model is needed) and routed by text:
+wake+question answers immediately; bare wake gets "Yes? I'm listening";
+a 25 s follow-up window keeps coach-mode "next / done" flowing without
+re-waking. Runs at boot via systemd (`ember.service` + `ember-whisper
+.service`) — battery in, box alive.
+
+Remaining: (1) AP mode (SSID EMBER) for the router-less dashboard,
+(2) print lid today (tub printed overnight).

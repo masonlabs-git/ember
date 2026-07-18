@@ -30,7 +30,7 @@ def conns():
 PAGE = """<!doctype html><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <meta http-equiv=refresh content=6>
-<title>bug-out box</title>
+<title>EMBER</title>
 <style>
 body{{font-family:system-ui;margin:0;background:#141a14;color:#dfe8df}}
 header{{padding:10px 16px;background:#1e2a1e;display:flex;gap:12px;
@@ -45,7 +45,7 @@ small{{color:#8fa58f}} img{{max-width:96px;border-radius:6px}}
 input,button{{font-size:16px;padding:8px;border-radius:6px;border:none}}
 button{{background:#2f6a2f;color:#fff}}
 </style>
-<header><h1>&#128230; bug-out box</h1>
+<header><h1>&#128293; EMBER</h1>
 <span class=badge>OFFLINE &#10003;</span>
 <span class=badge ok>RAM {ram}</span>
 <nav><a href=/>mind</a><a href=/board>board</a><a href=/intake>intake</a>

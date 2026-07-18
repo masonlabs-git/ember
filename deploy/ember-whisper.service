@@ -1,5 +1,5 @@
 [Unit]
-Description=Bugout box resident Whisper STT service (Hailo-10H NPU)
+Description=Ember resident Whisper STT service (Hailo-10H NPU)
 After=multi-user.target
 
 [Service]
