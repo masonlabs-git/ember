@@ -26,7 +26,10 @@ BASE = (
 MAIN = BASE + (
     "\nNormally: at most three short sentences, then the citation "
     "marker. Your FIRST sentence must be under twelve words and state "
-    "the most important action. "
+    "the most important action — except when the question asks for an "
+    "amount or number: then compute it and state the number first, "
+    "showing the arithmetic briefly (like 85 people x 4 liters x 3 days "
+    "= 1,020 liters). "
     "\nEXCEPTION — an active emergency happening to a person right now "
     "(bleeding, choking, not breathing, burned, seizure, unconscious): "
     "coach instead. Reply with ONE short step only, then stop — they "

@@ -75,18 +75,26 @@ def pick_persona(text: str) -> tuple[str, str]:
     return "answer", persona.MAIN
 
 
+# Turns that continue a flow rather than start one. Measured failure they
+# fix: on "next" the box re-retrieved for the literal word "next" and
+# re-stated step one forever instead of advancing the protocol.
+_CONTINUATIONS = {"next", "done", "okay", "ok", "yes", "ready", "continue"}
+
+
 class Brain:
     def __init__(self):
         self.conn = retrieval.connect()
         self.history: list[tuple[str, str]] = []   # (user, box) turns
         self.mode = persona.MAIN
+        self.last_mode = "answer"
+        self.topic = ""            # last real question — continuations
+        #                            retrieve against THIS, not "next"
 
     def answer(self, question: str, system: str = None) -> str:
         """One full turn: retrieve, generate (streamed to speech), log."""
         emit("heard", text=question)
+        cont = question.lower().strip(" .!?") in _CONTINUATIONS
         # sticky interview: stay in the intake flow until it resolves.
-        # (coach/answer share one prompt — the model itself carries the
-        # coaching flow via RECENT CONVERSATION, no stickiness needed)
         mode = "answer"
         if system is None:
             mode, system = pick_persona(question)
@@ -94,10 +102,23 @@ class Brain:
                 self.mode = persona.INTERVIEW
             if self.mode is persona.INTERVIEW:
                 mode, system = "interview", persona.INTERVIEW
-        hits = retrieval.search(self.conn, question)
+            elif cont and self.last_mode == "coach":
+                mode = "coach"          # sticky: 'next' keeps coaching
+        if not cont or not self.topic:
+            self.topic = question
+        hits = retrieval.search(self.conn, self.topic)
         emit("retrieved", citations=[h.citation for h in hits], mode=mode)
         context = retrieval.context_block(hits)
-        prompt = persona.build_prompt(question, context)
+        if cont and mode == "coach":
+            ask = (f"The user said '{question}'. Continue coaching for: "
+                   f"{self.topic} — give the NEXT step, one you have not "
+                   "already given above.")
+        elif question.lower().strip(" .!?") == "repeat":
+            ask = (f"Repeat your previous instruction for '{self.topic}' "
+                   "in different words.")
+        else:
+            ask = question
+        prompt = persona.build_prompt(ask, context)
         if self.history:
             recent = "\n".join(f"User: {u}\nBox: {b}"
                                for u, b in self.history[-3:])
@@ -105,6 +126,7 @@ class Brain:
         # coach = one step: enforced by token budget, not prompt hope —
         # the model was reliably ignoring the one-sentence instruction
         cap = 36 if mode == "coach" else None
+        self.last_mode = mode
         stream = llm.generate_stream(prompt, system, num_predict=cap)
         if config.MUTE:
             reply = "".join(stream).strip()
