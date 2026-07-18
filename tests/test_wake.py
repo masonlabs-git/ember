@@ -50,6 +50,13 @@ class WakeRoutingTest(unittest.TestCase):
             self.assertEqual(route(noise, False), ("ignore", ""),
                              f"hallucination not ignored: {noise!r}")
 
+    def test_bracket_garbage_ignored_even_in_window(self):
+        # seen live: '[ [ [ [ [ [] ].].' passed the two-word floor and
+        # got answered with a fabricated citation
+        for garbage in ("[ [ [ [ [ [] ].].", "10,000.", "... ... ..."):
+            self.assertEqual(route(garbage, True), ("ignore", ""),
+                             f"garbage not ignored: {garbage!r}")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -48,6 +48,8 @@ def route(heard: str, awake: bool) -> tuple[str, str]:
     Returns ("answer", question) | ("wake", "") | ("ignore", "").
     Pure function so the demo-critical routing is unit-testable.
     """
+    if not re.search(r"[a-zA-Z]{2}", heard):
+        return "ignore", ""             # whisper bracket-noise like '[ [ ['
     m = WAKE.search(heard)
     if m:
         q = (heard[:m.start()] + " " + heard[m.end():]).strip(" ,.!?")
@@ -108,6 +110,17 @@ class Brain:
             self.topic = question
         hits = retrieval.search(self.conn, self.topic)
         emit("retrieved", citations=[h.citation for h in hits], mode=mode)
+        if not hits and mode == "answer":
+            # no sources -> no answer. Observed failure: garbage input
+            # retrieved nothing and the model still invented advice with
+            # a fabricated [1]. Grounded-with-receipts is the product.
+            reply = ("I could not find that in my field manuals. "
+                     "Try asking a different way.")
+            emit("spoke", text=reply)
+            if not config.MUTE:
+                tts.speak(reply)
+            self.history.append((question, reply))
+            return reply
         context = retrieval.context_block(hits)
         if cont and mode == "coach":
             done_steps = "; ".join(
