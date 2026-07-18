@@ -66,8 +66,8 @@ professional care"). Grounded-with-receipts is the credibility story.
 - Piper TTS: **~0.5× real-time** (2× faster than speech).
 - Retrieval over **542,648 chunks** (8 field manuals + 71,529 Wikipedia
   medicine articles): **~140 ms** on the SSD after stopword tuning.
-- Full voice loop (speak → answer begins): **~15–20 s**, most of it the
-  reply's own spoken length.
+- Full voice loop: box responds in **~2 s**, first substantive answer
+  sentence at **~11–13 s** (fresh question) — see full-chain section.
 
 ## Corpus (prepared as data before the event; indexed by our code after)
 
@@ -113,19 +113,36 @@ during the event; the repo was created public at kickoff with no prior code._
   on CPU by design; the NPU is reserved for Whisper STT. NPU = ears, CPU =
   brain, SSD = memory.
 
-## Full-chain status (2026-07-18 ~05:40, on the box)
+## Full-chain status (2026-07-18, on the box — LATENCY TARGET MET)
 
-END-TO-END WORKS, OFFLINE: audio -> NPU Whisper ("How do I purify creek
-water...") -> FTS5 retrieval (FEMA/Sphere/FM 21-76) -> Gemma 4 E2B ->
-spoken cited answer out the EMEET. Every subsystem proven on hardware.
+END-TO-END WORKS, OFFLINE, FAST. Measured full chain (wav in → spoken
+cited answer), repeated runs on the real hardware:
 
-Known issue to fix (morning): STT via subprocess loads torch (~1.5GB CPU
-RAM) which evicts the 6.8GB Gemma -> cold reload -> 171s total. NOT
-fundamental. Fix: resident Whisper service with RAM guard (or torch-free
-pre/post), so STT (NPU, 1.2s) and Gemma (CPU, 1.4s first token) coexist
-without eviction. Measured component speeds already prove the target.
+- **Box audibly responds in 1.3–2.0 s** (pre-synthesized "checking my
+  field manuals" plays the instant STT lands, while Gemma prefills).
+- **First substantive answer audio: 11.3–12.7 s** on a never-seen
+  question; **4.4–5.4 s** on repeated/cached prompts.
+- STT on the Hailo NPU: **1.3–2.0 s**. Retrieval: **<100 ms**.
+- Generation: **~5.5 tok/s** alongside live TTS; whole compute chain
+  (gen_done) typically 13–16 s fresh, 7–9 s cached; the tail beyond that
+  is just the reply's own spoken length.
+- 46/46 unit tests pass on the box. RAM: 2.3+ GB headroom at all times.
 
-Remaining: (1) resident-whisper RAM fix, (2) live-mic VAD front-end (loop
-code exists in box/audio.py + brain.py, just needs the NPU STT it now has),
-(3) rename bug-out box -> EMBER (repo, code, TTS intro, AP SSID), (4) print
-lid tomorrow (tub printing overnight).
+How it got there (the engineering story, all measured on-device):
+1. Resident torch-free Whisper service (numpy mel, unix socket) — STT
+   10.9 s → 1.3 s and no more torch evicting the LLM.
+2. `gemma4:e2b-it-qat` (Google's official QAT build, 4.3 GB) instead of
+   the 7.2 GB q4_K_M — the 8 GB Pi went from swap-thrash (1 tok/s) to
+   2.5 GB headroom.
+3. Flash-attention OFF on CPU: 7.3 vs 4.0 tok/s solo.
+4. Gemma's sliding-window attention caps ollama's KV prefix reuse at a
+   ~93-token checkpoint, so every fresh question re-prefills ~490 tok at
+   ~60 tok/s — persona and context are trimmed hard because of it.
+5. In-process Piper (one onnxruntime load), player-thread TTS overlap,
+   `nice(4)` on the brain so piper bursts stop stealing ollama's cores.
+6. Coach mode: one-step-at-a-time enforced by a 36-token cap in code.
+
+Remaining: (1) live-mic VAD front-end (loop code exists in box/audio.py +
+brain.py, just needs wiring to the resident STT), (2) rename bug-out box
+-> EMBER (repo, code, TTS intro, AP SSID), (3) print lid today (tub
+printed overnight).
