@@ -1,4 +1,4 @@
-# EMBER — the bug-out box — Kaggle Writeup (draft)
+# EMBER — the bug-out box
 
 _Build with Gemma: JustBuild — Track 1: On-Device AI with Gemma 4_
 
@@ -79,9 +79,14 @@ iFixit. All public-domain or open-licensed; documented in DATA.md.
 
 ## Cost at scale
 
-Prototype ~$410 off-the-shelf; modeled BOM ~$252 @1k units, ~$211 @10k;
-retail $499–599 with **zero recurring cost** (vs. Garmin inReach's hardware +
-monthly subscription). Software marginal cost is zero (open weights).
+Prototype: ~$410 off-the-shelf. Modeled production BOM @10k units: **~$276**
+(CM5 + Hailo NPU + camera + mic array/speaker + integrated 74 Wh battery +
+ruggedized enclosure + assembly + cert amortization); a Lite SKU without the
+NPU lands ~$206. Retail $599 / $399 with **zero recurring cost** — vs.
+Garmin inReach's hardware + monthly subscription. Adding Meshtastic LoRa +
+GNSS is ~$15 BOM (the Pi runs meshtasticd natively). Software marginal cost
+is zero (open weights). The fleet business: agencies buy a Hearth + twenty
+Embers + support; survival stays subscription-free forever.
 
 ## What Ember does (all offline, all on the box)
 
