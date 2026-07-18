@@ -85,10 +85,20 @@ def _voice(model_path: str):
     return v
 
 
+def speakable(text: str) -> bool:
+    """False for fragments with nothing pronounceable — e.g. the ' [1].'
+    tail left when a token cap cuts generation right after a citation
+    strips to a bare '.'. Piper yields zero audio chunks for phoneme-less
+    text and the wav write crashes ('# channels not specified')."""
+    return bool(re.search(r"\w", strip_citations(text)))
+
+
 def synth(text: str, voice: str = None) -> str:
     """Synthesize to a temp wav; returns the path."""
     voice = voice or pick_voice(text)
     text = apply_shim(text)
+    if not re.search(r"\w", text):
+        raise ValueError("nothing speakable after citation strip")
     wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
     try:
         with wave.open(wav, "wb") as wf:
@@ -178,8 +188,9 @@ def speak_stream(fragments: Iterable[str],
     for sent in sentences(fragments):
         if on_event:
             on_event("sentence")
-        wavs.put((synth(sent, pick_voice(sent)), True))
-        spoken.append(sent)
+        spoken.append(sent)          # full text for the display/log …
+        if speakable(sent):          # … but only real content is spoken
+            wavs.put((synth(sent, pick_voice(sent)), True))
     wavs.put(None)
     th.join()
     return " ".join(spoken)

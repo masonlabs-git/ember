@@ -93,6 +93,26 @@ class ModeRoutingTest(unittest.TestCase):
         self.assertIs(persona.ANSWER, persona.COACH)
 
 
+class SpeakableTest(unittest.TestCase):
+    # a token cap can cut generation mid-citation; the flushed tail
+    # ('[2.') strips to nothing and must never reach the synthesizer
+    def test_normal_sentence_is_speakable(self):
+        from box.tts import speakable
+        self.assertTrue(speakable("Boil the water for one minute [1]."))
+
+    def test_citation_only_tail_is_not(self):
+        from box.tts import speakable
+        self.assertFalse(speakable(" [2]."))       # strips to bare '.'
+        self.assertFalse(speakable("."))
+        self.assertFalse(speakable("  "))
+
+    def test_partial_citation_still_speaks(self):
+        # '[1' doesn't match the strip pattern; it has a digit, so piper
+        # can voice it — awkward but crash-free
+        from box.tts import speakable
+        self.assertTrue(speakable("[1"))
+
+
 class CitationStripTest(unittest.TestCase):
     def test_strips_single_and_multi(self):
         from box.tts import strip_citations
