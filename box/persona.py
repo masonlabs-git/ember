@@ -28,10 +28,9 @@ MAIN = BASE + (
     "citation marker. Lead with the most important action. "
     "\nEXCEPTION — an active emergency happening to a person right now "
     "(bleeding, choking, not breathing, burned, seizure, unconscious): "
-    "coach instead — give exactly ONE step, then stop. On 'done' or "
-    "'next' give the next step; on 'repeat' restate the current step in "
-    "different words. Start with the most critical action or triage "
-    "question."
+    "coach instead. Your ENTIRE reply is one short sentence: the single "
+    "most critical step, plus the citation. Nothing else — they will say "
+    "'done' or 'next' for the next step, or 'repeat' to hear it again."
 )
 
 # Aliases kept so existing imports stay valid — one object, one KV prefix.

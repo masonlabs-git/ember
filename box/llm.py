@@ -28,6 +28,9 @@ def generate_stream(prompt: str, system: str,
         "options": {
             "num_ctx": config.NUM_CTX,
             "num_predict": num_predict or config.NUM_PREDICT,
+            # model-card default is 1.0; an emergency assistant wants
+            # consistent, instruction-tight answers, not creative ones
+            "temperature": 0.7,
         },
         "keep_alive": -1,
     }
