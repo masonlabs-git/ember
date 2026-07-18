@@ -65,7 +65,10 @@ class Brain:
             recent = "\n".join(f"User: {u}\nBox: {b}"
                                for u, b in self.history[-3:])
             prompt = f"RECENT CONVERSATION:\n{recent}\n\n{prompt}"
-        stream = llm.generate_stream(prompt, system)
+        # coach = one step: enforced by token budget, not prompt hope —
+        # the model was reliably ignoring the one-sentence instruction
+        cap = 36 if mode == "coach" else None
+        stream = llm.generate_stream(prompt, system, num_predict=cap)
         if config.MUTE:
             reply = "".join(stream).strip()
         else:

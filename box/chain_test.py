@@ -71,7 +71,9 @@ def main() -> None:
             if audio_count[0] == 2:
                 mark("first_answer_audio")
 
-    stream = timed(llm.generate_stream(prompt, system, stats=stats))
+    cap = 36 if mode == "coach" else None       # mirror brain.answer
+    stream = timed(llm.generate_stream(prompt, system, num_predict=cap,
+                                       stats=stats))
     if mute:
         reply = "".join(stream).strip()
     else:
