@@ -69,8 +69,16 @@ def parse(text: str) -> tuple[str, float, str, str] | None:
     if not m:
         return None
     direction = "out" if re.fullmatch(_OUT, m["dir"], re.I) else "in"
-    return (direction, float(m["qty"]), (m["unit"] or "").lower(),
-            m["item"])
+    unit, item = (m["unit"] or "").lower(), m["item"]
+    if not unit:
+        # the unit hides inside the item when filler words sit between
+        # the number and it — live failure: "10 MORE gallons of water"
+        # parsed as 10 (liters) of "more gallons of water"
+        um = re.match(rf"(?:[a-z]+\s+){{0,2}}({_UNITS})\s+(?:of\s+)?(.+)",
+                      item, re.I)
+        if um:
+            unit, item = um[1].lower(), um[2]
+    return direction, float(m["qty"]), unit, item
 
 
 def _fmt_qty(v: float) -> str:
@@ -98,17 +106,23 @@ def maybe_answer(text: str, sconn=None) -> str | None:
         if not (item in stock or unit
                 or set(item.split()) & COMMON):
             return None
-        # water is ledgered in liters; convert spoken gallons
+        # echo the SPOKEN unit back, then ledger water in liters
+        spoken = f"{_fmt_qty(qty)} {unit}".strip() if unit \
+            else _fmt_qty(qty)
+        converted = ""
         if item == "water" and unit.startswith("gallon"):
-            qty, unit = round(qty * 3.785, 1), "L"
+            qty = round(qty * 3.785, 1)
+            converted = f" — {_fmt_qty(qty)} liters"
+            unit = "L"
         if item == "water" and unit in ("liter", "liters", "litre",
                                         "litres", ""):
             unit = "L"
+            spoken = f"{_fmt_qty(qty)} liters"
         delta = qty if direction == "in" else -qty
         scribe.supply(sconn, item, delta, unit)
         remaining = scribe.stock(sconn).get(item, 0.0)
         verb = "Received" if direction == "in" else "Distributed"
-        reply = (f"Logged. {verb} {_fmt_qty(qty)} {unit} {item}. "
+        reply = (f"Logged. {verb} {spoken} of {item}{converted}. "
                  f"{_fmt_qty(remaining)} {unit} remaining".strip() + ".")
         if item == "water":
             days = scribe.water_days_remaining(sconn)

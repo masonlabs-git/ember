@@ -32,6 +32,16 @@ class TransactionTest(unittest.TestCase):
         quartermaster.maybe_answer("we got 10 gallons of water", conn)
         self.assertAlmostEqual(scribe.stock(conn)["water"], 1037.9, 1)
 
+    def test_filler_word_before_gallons_still_converts(self):
+        # verbatim live failure: 'more' broke unit capture and 10 gallons
+        # was ledgered as 10 liters
+        conn = fresh()
+        r = quartermaster.maybe_answer(
+            "we just received 10 more gallons of water", conn)
+        self.assertAlmostEqual(scribe.stock(conn)["water"], 1037.9, 1)
+        self.assertIn("10 gallons", r)
+        self.assertIn("37.9 liters", r)
+
     def test_spoken_numbers(self):
         conn = fresh()
         quartermaster.maybe_answer("we gave out twenty blankets", conn)
