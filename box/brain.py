@@ -117,6 +117,12 @@ def route(heard: str, awake: bool) -> tuple[str, str]:
         if q.lower() in _ONE_WORD_TURNS:
             return "answer", q.lower()  # "hey ember, next" mid-story
         return "wake", ""               # bare wake — acknowledge and listen
+    # "Hey," + a question-shaped remainder addresses the box even when
+    # whisper swallows the name entirely — live miss: "Hey, Ember,
+    # wondering where..." transcribed as "Hey, I am wondering where..."
+    g = re.match(r"^(?:hey|hi|okay|ok)[,!.\s]+(.+)$", heard.strip(), re.I)
+    if g and len(g[1].split()) >= 3 and _directed(g[1]):
+        return "answer", g[1].strip(" ,.!?")
     if awake:
         words = heard.strip(" ,.!?").split()
         if len(words) >= 2 and _directed(heard):

@@ -156,3 +156,18 @@ class FuzzyWakeTest(unittest.TestCase):
                       "Remember to bring the water"):
             action, _ = route(heard, False)
             self.assertEqual(action, "ignore", f"false wake: {heard!r}")
+
+
+class HeyDirectedTest(unittest.TestCase):
+    def test_hey_plus_question_wakes_even_without_name(self):
+        # verbatim: whisper ate "Ember" -> "Hey, I am wondering where..."
+        action, q = route(
+            "Hey, I am wondering where the nearest gas station is.", False)
+        self.assertEqual(action, "answer")
+        self.assertIn("gas station", q)
+
+    def test_hey_plus_chatter_still_ignored(self):
+        for heard in ("Hey, look at this thing.", "Hey there!",
+                      "Hey, nice to meet you."):
+            action, _ = route(heard, False)
+            self.assertEqual(action, "ignore", f"false wake: {heard!r}")
