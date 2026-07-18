@@ -133,6 +133,15 @@ class Brain:
         # recognition fast-path: camera + face match, no LLM
         if any(k in ql for k in map(str.lower, _RECOGNIZE)):
             return self._say(question, self._recognize(), "recognize")
+        # quartermaster fast-path: spoken supply transactions and stock
+        # queries hit the ledger directly — inventory must be exact
+        try:
+            from . import quartermaster
+            q = quartermaster.maybe_answer(question)
+        except Exception:
+            q = None
+        if q:
+            return self._say(question, q, "supplies")
         # places fast-path: "nearest hospital" answers are computed from
         # the offline OSM index, not generated — exact and instant
         try:
