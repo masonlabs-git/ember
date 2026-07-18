@@ -54,7 +54,9 @@ _ONE_WORD_TURNS = {"done", "next", "repeat", "yes", "no", "okay", "ok",
 _DIRECTED_STARTS = {"how", "what", "where", "when", "why", "who", "which",
                     "can", "could", "do", "does", "did", "is", "are",
                     "should", "will", "would", "tell", "read", "show",
-                    "find", "give", "we", "i", "my", "help", "ember"}
+                    "find", "give", "we", "i", "my", "help", "ember",
+                    "anyone", "anybody", "someone", "has", "have",
+                    "was", "were", "there"}
 _MAX_FOLLOWUP_WORDS = 18
 
 
@@ -292,6 +294,25 @@ class Brain:
                 reply = nav.answer_for(str(args["place"]))
                 if reply:
                     return self._say(question, reply, "places")
+            if name == "find_person" and args.get("name"):
+                from . import scribe as _scribe
+                sconn = _scribe.connect()
+                hits = _scribe.find_person(sconn, str(args["name"]))
+                if hits:
+                    h = hits[0]
+                    when = time.strftime(
+                        "%I:%M %p", time.localtime(h["ts"])).lstrip("0")
+                    where = f", at {h['location']}" if h.get("location")                         else ""
+                    more = (f" {len(hits) - 1} other match(es) are on "
+                            "the board." if len(hits) > 1 else "")
+                    reply = (f"Yes — {h['names']} checked in at "
+                             f"{when}{where}.{more}")
+                else:
+                    reply = (f"No one matching {args['name']} has "
+                             "checked in yet. I will announce it if "
+                             "they do and someone lists them as "
+                             "missing.")
+                return self._say(question, reply, "registry")
             if name == "recognize_face":
                 return self._say(question, self._recognize(),
                                  "recognize")

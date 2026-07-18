@@ -55,6 +55,12 @@ TOOLS = [
             "days": {"type": "integer"}},
             "required": ["people", "days"]}}},
     {"type": "function", "function": {
+        "name": "find_person",
+        "description": "Look up whether a person has checked in at the "
+                       "shelter registry, by name.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string"}}, "required": ["name"]}}},
+    {"type": "function", "function": {
         "name": "recognize_face",
         "description": "Look through the camera and identify the "
                        "person standing in front of the box.",
