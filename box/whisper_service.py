@@ -13,6 +13,17 @@ transcript back.
 from __future__ import annotations
 
 import os
+
+# CRITICAL: transformers auto-imports torch (~1.5GB) when it detects torch is
+# installed, which OOM-thrashes the box next to Gemma's 6.8GB. These env vars
+# force transformers to skip torch/tf/flax entirely and use only the rust
+# `tokenizers` backend the Whisper tokenizer actually needs. Must be set
+# BEFORE any transformers import happens.
+os.environ.setdefault("USE_TORCH", "0")
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("USE_FLAX", "0")
+os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+
 import socket
 import subprocess
 import sys
