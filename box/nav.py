@@ -22,7 +22,8 @@ from . import config
 
 # Spoken alias -> (osm key, accepted values). Disaster-relevant kinds.
 KINDS = {
-    "hospital":      ("amenity", ("hospital", "clinic", "doctors")),
+    "hospital":      ("amenity", ("hospital",)),
+    "clinic":        ("amenity", ("clinic", "doctors")),
     "pharmacy":      ("amenity", ("pharmacy",)),
     "fire station":  ("amenity", ("fire_station",)),
     "police":        ("amenity", ("police",)),
@@ -35,7 +36,7 @@ KINDS = {
 }
 ALIASES = {
     "hospital": "hospital", "emergency room": "hospital", "er": "hospital",
-    "clinic": "hospital", "doctor": "hospital",
+    "clinic": "clinic", "doctor": "clinic", "urgent care": "clinic",
     "pharmacy": "pharmacy", "drug store": "pharmacy",
     "drugstore": "pharmacy",
     "fire station": "fire station", "fire department": "fire station",
@@ -175,16 +176,34 @@ def build(pbf_path: str, db_path=None) -> int:
     rows = []
 
     class H(osmium.SimpleHandler):
-        def node(self, n):
+        def _add(self, tags, lat, lon):
             for key in ("amenity", "shop"):
-                kind = value_to_kind.get((key, n.tags.get(key, "")))
+                kind = value_to_kind.get((key, tags.get(key, "")))
                 if kind:
-                    rows.append((kind, n.tags.get("name", ""),
-                                 n.location.lat, n.location.lon,
-                                 n.tags.get("addr:street", "")))
+                    rows.append((kind, tags.get("name", ""), lat, lon,
+                                 tags.get("addr:street", "")))
                     return
 
-    H().apply_file(pbf_path)
+        def node(self, n):
+            self._add(n.tags, n.location.lat, n.location.lon)
+
+        def way(self, w):
+            # hospitals and supermarkets are usually building POLYGONS,
+            # not nodes — first node's location stands in for the
+            # centroid (plenty for nearest-X at mile scales)
+            if not w.nodes:
+                return
+            try:
+                loc = w.nodes[0].location
+                if loc.valid():
+                    self._add(w.tags, loc.lat, loc.lon)
+            except osmium.InvalidLocationError:
+                pass
+
+    # disk-backed node cache: ways need node locations, and the RAM
+    # belongs to Gemma (flex_mem on Utah would eat gigabytes)
+    H().apply_file(pbf_path, locations=True,
+                   idx="sparse_file_array,/home/caleb/.osm-node-cache")
     conn.executemany("INSERT INTO pois VALUES (?,?,?,?,?)", rows)
     conn.commit()
     return len(rows)
