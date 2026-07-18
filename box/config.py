@@ -7,12 +7,16 @@ INDEX_DB = Path(os.environ.get("BOX_INDEX_DB", str(VAULT / "index.db")))
 SCRIBE_DB = Path(os.environ.get("BOX_SCRIBE_DB", str(VAULT / "scribe.db")))
 
 OLLAMA_URL = os.environ.get("BOX_OLLAMA_URL", "http://localhost:11434")
-MODEL = os.environ.get("BOX_MODEL", "gemma4:e2b")
+# e2b-it-qat: Google's official quantization-aware-trained build of
+# Gemma 4 E2B — ~half the RAM of the default q4_K_M blob at near-original
+# quality. On an 8GB Pi the difference is "thrashes swap" vs "multi-GB
+# headroom", and CPU tok/s scales with bytes touched per token.
+MODEL = os.environ.get("BOX_MODEL", "gemma4:e2b-it-qat")
 # 1536, not 2048: measured prompt is ~650 tok (persona + 1000-char context
 # + question + 3-turn history head-room) and every unused ctx slot is KV
 # RAM the 8GB box cannot spare next to the resident model.
 NUM_CTX = int(os.environ.get("BOX_NUM_CTX", "1536"))
-NUM_PREDICT = int(os.environ.get("BOX_NUM_PREDICT", "90"))
+NUM_PREDICT = int(os.environ.get("BOX_NUM_PREDICT", "80"))
 
 # STT runs on the Hailo NPU via hailo-apps (see box/stt.py). No URL needed.
 

@@ -20,8 +20,8 @@ BASE = (
 )
 
 ANSWER = BASE + (
-    "\nAnswer the question in at most four short sentences, then the "
-    "citation marker."
+    "\nAnswer the question in at most three short sentences, then the "
+    "citation marker. Lead with the single most important action."
 )
 
 COACH = BASE + (
