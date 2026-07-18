@@ -29,7 +29,7 @@ def conns():
 
 PAGE = """<!doctype html><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<meta http-equiv=refresh content=6>
+{refresh}
 <title>EMBER</title>
 <style>
 body{{font-family:system-ui;margin:0;background:#141a14;color:#dfe8df}}
@@ -63,8 +63,11 @@ def ram() -> str:
         return "n/a"
 
 
-def page(body: str) -> str:
-    return PAGE.format(ram=ram(), body=body)
+def page(body: str, live: bool = False) -> str:
+    """live=True auto-reloads every 6s (thought stream, board). Form
+    pages must NOT refresh — it wipes whatever the user is typing."""
+    r = "<meta http-equiv=refresh content=6>" if live else ""
+    return PAGE.format(refresh=r, ram=ram(), body=body)
 
 
 @app.get("/")
@@ -81,7 +84,7 @@ def mind():
             rows.append(f"<div class=card><small>{t} — {e['kind']}</small>"
                         f"<div>{html.escape(json.dumps(detail, ensure_ascii=False)[:400])}"
                         f"</div></div>")
-    return page("".join(rows) or "<div class=card>No thoughts yet.</div>")
+    return page("".join(rows) or "<div class=card>No thoughts yet.</div>", live=True)
 
 
 @app.get("/board")
@@ -96,7 +99,7 @@ def board():
         cards.append(f"<div class=card>{img}<b>{html.escape(h['names'])}</b>"
                      f"<br><small>checked in {t}</small>{med}{mis}</div>")
     return page(f"<div class=card><b>{scribe.headcount(s)} people "
-                f"registered</b></div>" + "".join(cards))
+                f"registered</b></div>" + "".join(cards), live=True)
 
 
 @app.get("/photo/<int:rid>")
