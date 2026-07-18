@@ -50,7 +50,12 @@ def main() -> None:
         print(f"{name}: {n} chunks")
     conn.execute("INSERT INTO chunks(chunks) VALUES('optimize')")
     conn.commit()
-    print(f"DONE: {total} chunks in {time.time()-t0:.0f}s -> {config.INDEX_DB}")
+    from box.retrieval import build_authority
+    na = build_authority(conn)
+    conn.execute("INSERT INTO chunks_authority(chunks_authority) VALUES('optimize')")
+    conn.commit()
+    print(f"DONE: {total} chunks ({na} authority) in {time.time()-t0:.0f}s "
+          f"-> {config.INDEX_DB}")
 
 
 if __name__ == "__main__":

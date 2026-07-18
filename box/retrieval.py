@@ -23,6 +23,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
     text,
     tokenize = 'porter unicode61'
 );
+-- Small fast index of the hand-curated operational sources (~a few thousand
+-- chunks). Queried FIRST so survival/shelter answers never touch the 540k
+-- Wikipedia rows on the slow USB drive. Same schema, tiny table.
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_authority USING fts5(
+    source, title, text,
+    tokenize = 'porter unicode61'
+);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 """
 
@@ -180,30 +187,38 @@ def _terms(q: str) -> list[str]:
     return expanded[:12]
 
 
-def _match(conn: sqlite3.Connection, fq: str, limit: int,
-           bulk: bool | None) -> list[Hit]:
-    """bulk=False -> authority sources only; True -> bulk only; None -> all."""
-    where = "chunks MATCH ?"
-    args: list = [fq]
-    if bulk is False:
-        where += " AND source NOT IN (%s)" % ",".join(
-            "?" * len(BULK_SOURCES))
-        args += list(BULK_SOURCES)
-    elif bulk is True:
-        where += " AND source IN (%s)" % ",".join("?" * len(BULK_SOURCES))
-        args += list(BULK_SOURCES)
+def build_authority(conn: sqlite3.Connection) -> int:
+    """(Re)populate the small authority table by copying every non-bulk row
+    out of `chunks`. Fast (~a few thousand rows); makes survival queries
+    never touch the 540k Wikipedia rows."""
+    conn.execute("DELETE FROM chunks_authority")
+    placeholders = ",".join("?" * len(BULK_SOURCES))
+    conn.execute(
+        f"INSERT INTO chunks_authority(source, title, text) "
+        f"SELECT source, title, text FROM chunks "
+        f"WHERE source NOT IN ({placeholders})", list(BULK_SOURCES))
+    conn.commit()
+    return conn.execute(
+        "SELECT count(*) FROM chunks_authority").fetchone()[0]
+
+
+def _match(conn: sqlite3.Connection, table: str, fq: str,
+           limit: int) -> list[Hit]:
+    """Query one FTS table by BM25. `table` is 'chunks_authority' (tiny/fast)
+    or 'chunks' (the full 540k-row bulk index)."""
     rows = conn.execute(
-        f"SELECT source, title, text, bm25(chunks) AS score "
-        f"FROM chunks WHERE {where} ORDER BY score LIMIT ?",
-        args + [limit]).fetchall()
+        f"SELECT source, title, text, bm25({table}) AS score "
+        f"FROM {table} WHERE {table} MATCH ? ORDER BY score LIMIT ?",
+        (fq, limit)).fetchall()
     return [Hit(source=r[0], title=r[1], text=html.unescape(r[2]),
                 score=r[3]) for r in rows]
 
 
 def search(conn: sqlite3.Connection, query: str,
            top_k: int = None) -> list[Hit]:
-    """Tiered retrieval: AND-precision before OR-recall, authority sources
-    before the Wikipedia bulk layer."""
+    """Authority-first retrieval. The small field-manual table answers almost
+    every emergency query in <50ms; the huge Wikipedia table is touched only
+    when the manuals come up empty."""
     terms = _terms(query)
     if not terms:
         return []
@@ -221,21 +236,27 @@ def search(conn: sqlite3.Connection, query: str,
                 seen.add(key)
                 hits.append(h)
 
+    def safe(fn):
+        try:
+            return fn()
+        except sqlite3.OperationalError:
+            return []
+
     for term, source in PROTOCOL_PINS.items():     # deterministic protocols
         if term in terms:
             rows = conn.execute(
-                "SELECT source, title, text, 0.0 FROM chunks "
+                "SELECT source, title, text, 0.0 FROM chunks_authority "
                 "WHERE source = ? LIMIT 2", (source,)).fetchall()
             take([Hit(source=r[0], title=r[1],
                       text=html.unescape(r[2]), score=r[3]) for r in rows])
 
-    take(_match(conn, and_q, k, bulk=False))       # precise + authoritative
+    # authority table first — tiny, so both AND and OR are instant
+    take(safe(lambda: _match(conn, "chunks_authority", and_q, k)))
     if len(hits) < k:
-        take(_match(conn, or_q, k, bulk=False))    # recall, still authority
-    if len(hits) < k:
-        take(_match(conn, and_q, k, bulk=True))    # precise bulk
-    if len(hits) < k:
-        take(_match(conn, or_q, k, bulk=True))     # last resort
+        take(safe(lambda: _match(conn, "chunks_authority", or_q, k)))
+    # bulk Wikipedia only as a genuine last resort (obscure medical terms)
+    if not hits:
+        take(safe(lambda: _match(conn, "chunks", and_q, k)))
     return hits
 
 

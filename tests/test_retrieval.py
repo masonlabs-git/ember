@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from box.retrieval import (chunk_text, connect, context_block, ingest_txt,
-                           search)
+from box.retrieval import (build_authority, chunk_text, connect,
+                           context_block, ingest_txt, search)
 
 WATER = """Water Purification
 
@@ -28,6 +28,7 @@ class RetrievalTest(unittest.TestCase):
         src = Path(self.tmp.name) / "water.txt"
         src.write_text(WATER)
         ingest_txt(self.conn, src, "Test Manual")
+        build_authority(self.conn)
 
     def tearDown(self):
         self.conn.close()
@@ -97,14 +98,18 @@ class TierAndPinTest(unittest.TestCase):
         self.conn.executemany(
             "INSERT INTO chunks(source,title,text) VALUES (?,?,?)", rows)
         self.conn.commit()
+        build_authority(self.conn)
 
     def tearDown(self):
         self.conn.close()
         self.tmp.cleanup()
 
     def test_authority_beats_bulk(self):
+        # "water" alone matches the Wikipedia trivia rows too, but those live
+        # only in the bulk table which is never touched when authority hits.
         hits = search(self.conn, "purify water", top_k=2)
         self.assertEqual(hits[0].source, "FM 21-76 Survival")
+        self.assertTrue(all(h.source != "Wikipedia Medicine" for h in hits))
 
     def test_protocol_pin_guarantees_start(self):
         hits = search(self.conn, "help me triage the injured", top_k=3)
