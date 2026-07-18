@@ -8,13 +8,21 @@ SCRIBE_DB = Path(os.environ.get("BOX_SCRIBE_DB", str(VAULT / "scribe.db")))
 
 OLLAMA_URL = os.environ.get("BOX_OLLAMA_URL", "http://localhost:11434")
 MODEL = os.environ.get("BOX_MODEL", "gemma4:e2b")
-NUM_CTX = int(os.environ.get("BOX_NUM_CTX", "2048"))
+# 1536, not 2048: measured prompt is ~650 tok (persona + 1000-char context
+# + question + 3-turn history head-room) and every unused ctx slot is KV
+# RAM the 8GB box cannot spare next to the resident model.
+NUM_CTX = int(os.environ.get("BOX_NUM_CTX", "1536"))
 NUM_PREDICT = int(os.environ.get("BOX_NUM_PREDICT", "90"))
 
 # STT runs on the Hailo NPU via hailo-apps (see box/stt.py). No URL needed.
 
 PIPER_BIN = os.environ.get("BOX_PIPER_BIN",
                            str(Path.home() / "piper-venv/bin/piper"))
+# piper's venv site-packages: tts.py imports PiperVoice from here to
+# synthesize in-process (same CPython 3.13 as the system interpreter).
+PIPER_SITE = os.environ.get(
+    "BOX_PIPER_SITE",
+    str(Path.home() / "piper-venv/lib/python3.13/site-packages"))
 VOICE_EN = os.environ.get("BOX_VOICE_EN",
                           str(Path.home() / "piper-voices/en_US-lessac-medium.onnx"))
 VOICE_ES = os.environ.get("BOX_VOICE_ES",

@@ -9,8 +9,10 @@ import os
 import queue
 import re
 import subprocess
+import sys
 import tempfile
 import threading
+import wave
 from typing import Callable, Iterable, Iterator
 
 from . import config
@@ -65,20 +67,46 @@ def sentences(fragments: Iterable[str]) -> Iterator[str]:
         yield buf.strip()
 
 
+# In-process piper voices, loaded once per process. Spawning the piper CLI
+# per sentence reloaded onnxruntime + the voice every time: ~1s extra
+# latency and a ~250MB transient RAM spike per sentence — the spike is what
+# killed piper mid-answer next to the 6.8GB resident Gemma (swap full,
+# malloc fail). Resident costs the same RAM once and holds it.
+_voices: dict = {}
+
+
+def _voice(model_path: str):
+    v = _voices.get(model_path)
+    if v is None:
+        if config.PIPER_SITE not in sys.path:
+            sys.path.insert(0, config.PIPER_SITE)
+        from piper import PiperVoice
+        v = _voices[model_path] = PiperVoice.load(model_path)
+    return v
+
+
 def synth(text: str, voice: str = None) -> str:
     """Synthesize to a temp wav; returns the path."""
     voice = voice or pick_voice(text)
+    text = apply_shim(text)
     wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
-    subprocess.run(
-        [config.PIPER_BIN, "--model", voice, "--output_file", wav],
-        input=apply_shim(text).encode(), check=True,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        with wave.open(wav, "wb") as wf:
+            _voice(voice).synthesize_wav(text, wf)
+    except Exception:                     # in-process path broken → CLI
+        with open("/tmp/piper.err", "ab") as err:
+            subprocess.run(
+                [config.PIPER_BIN, "--model", voice, "--output_file", wav],
+                input=text.encode(), check=True,
+                stdout=subprocess.DEVNULL, stderr=err)
     return wav
 
 
 def play(wav_path: str) -> None:
-    subprocess.run(["aplay", "-q", "-D", config.AUDIO_DEVICE, wav_path],
-                   check=False)
+    # -B 200ms buffer: absorbs scheduler stalls while Gemma saturates the
+    # cores (underruns were audible as crackles mid-sentence without it).
+    subprocess.run(["aplay", "-q", "-B", "200000",
+                    "-D", config.AUDIO_DEVICE, wav_path], check=False)
 
 
 def speak(text: str, voice: str = None) -> None:

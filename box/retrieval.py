@@ -260,8 +260,8 @@ def search(conn: sqlite3.Connection, query: str,
     return hits
 
 
-def context_block(hits: list[Hit], budget_chars: int = 1500,
-                  per_hit_chars: int = 700) -> str:
+def context_block(hits: list[Hit], budget_chars: int = 1000,
+                  per_hit_chars: int = 500) -> str:
     """Render hits into the prompt context. Kept SMALL on purpose: prompt-eval
     time dominates on-device latency (~34 tok/s), so a tight context is the
     biggest lever on how fast the box starts answering. Each hit is capped so

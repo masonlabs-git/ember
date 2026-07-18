@@ -29,8 +29,15 @@ def main() -> None:
     marks: dict[str, float] = {}
     t0 = time.time()
 
+    def mark(name: str) -> None:
+        # printed the moment it happens: a crash mid-chain still leaves
+        # every completed stage's number in the log
+        if name not in marks:
+            marks[name] = time.time() - t0
+            print(f"[mark] {name:12s} {marks[name]:6.1f}s", flush=True)
+
     heard = stt.transcribe_wav(wav)
-    marks["stt"] = time.time() - t0
+    mark("stt")
     print(f"[heard] {heard!r}")
 
     conn = retrieval.connect()
@@ -38,7 +45,7 @@ def main() -> None:
     context = retrieval.context_block(hits)
     prompt = persona.build_prompt(heard, context)
     system = pick_persona(heard)
-    marks["retrieval"] = time.time() - t0
+    mark("retrieval")
     print(f"[sources] {[h.citation for h in hits]}")
     print(f"[prompt chars] system={len(system)} prompt={len(prompt)}")
 
@@ -46,20 +53,20 @@ def main() -> None:
 
     def timed(gen):
         for frag in gen:
-            marks.setdefault("first_token", time.time() - t0)
+            mark("first_token")
             yield frag
-        marks["gen_done"] = time.time() - t0
+        mark("gen_done")
 
     def on_event(kind: str) -> None:
         if kind == "audio":
-            marks.setdefault("first_audio", time.time() - t0)
+            mark("first_audio")
 
     stream = timed(llm.generate_stream(prompt, system, stats=stats))
     if mute:
         reply = "".join(stream).strip()
     else:
         reply = tts.speak_stream(stream, on_event=on_event)
-    marks["speech_done"] = time.time() - t0
+    mark("speech_done")
     print(f"[reply] {reply}")
 
     print("\n=== chain breakdown (s since audio-in) ===")
