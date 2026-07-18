@@ -91,7 +91,9 @@ monthly subscription). Software marginal cost is zero (open weights).
 4. "How much water do 85 people need for three days?" — Sphere-cited math.
 5. "Twenty injured — walk me through triage." — START protocol, one step at
    a time.
-6. Close on the power bank and the price tag.
+6. Close on the body: Ember lives inside a hand-built WALL-E — it was
+   designed as his brain, and it moved in early. Power bank, price tag,
+   no subscription.
 
 ## What's next
 
