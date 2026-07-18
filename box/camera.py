@@ -42,20 +42,36 @@ class Cam:
     def __init__(self, width=1024, height=768, fps=10):
         self.frame: bytes | None = None
         self.frame_at = 0.0
+        self._size = (width, height, fps)
         self._lock = threading.Lock()
-        self._proc = subprocess.Popen(
-            ["rpicam-vid", "-n", "-t", "0", "--codec", "mjpeg",
-             "--width", str(width), "--height", str(height),
-             "--framerate", str(fps), "-o", "-"],
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self._proc = None
+        self._spawn()
         threading.Thread(target=self._pump, daemon=True).start()
 
+    def _spawn(self):
+        w, h, fps = self._size
+        self._proc = subprocess.Popen(
+            ["rpicam-vid", "-n", "-t", "0", "--codec", "mjpeg",
+             "--width", str(w), "--height", str(h),
+             "--framerate", str(fps), "-o", "-"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
     def _pump(self):
+        # self-healing: rpicam-vid can die on a CSI hiccup (field
+        # failure: zombie stream -> viewfinder dead until restart).
+        # Reap it and respawn forever.
         tail = b""
         while True:
             chunk = self._proc.stdout.read(65536)
             if not chunk:
-                return                      # camera process died
+                self._proc.wait()
+                time.sleep(2)
+                try:
+                    self._spawn()
+                    tail = b""
+                except Exception:
+                    time.sleep(5)
+                continue
             frames, tail = split_jpegs(tail + chunk)
             if frames:
                 with self._lock:
