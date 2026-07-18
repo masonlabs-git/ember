@@ -162,6 +162,14 @@ share ledgers, headcounts, and reunification hits across a valley with
 no infrastructure), GNSS for true self-location, ggwave acoustic
 box-to-box data (proven), full offline Wikipedia (49 GB).
 
+**Federated find** — the reunification design at fleet scale: a face
+embedding is 512 bytes, a photo is not, and LoRa can carry one but not
+the other. So the query travels and the faces don't: the Hearth (or any
+box) broadcasts a missing person's embedding over the mesh; every edge
+node matches it against its own consented registry locally and answers
+with name, shelter, cot, and confidence. Incident-wide search in which
+no photo ever leaves the box that took it.
+
 ---
 _Development was AI-assisted (Claude Code). All application code was written
 during the event; the repo was created public at kickoff with no prior code._

@@ -67,6 +67,39 @@ def _directed(heard: str) -> bool:
     return bool(re.search(r"\b(?:ember|amber)\b", heard, re.I))
 
 
+def _lev(a: str, b: str) -> int:
+    """Tiny Levenshtein for wake-word fuzzing (words are short)."""
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[-1] + 1,
+                           prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+# Venue acoustics turn "Ember" into things no regex anticipates —
+# observed in one evening: Emberg, Embers, Amor, Pamber, "a member".
+# Edit distance <=1 in the first two words (wake is always spoken
+# first), <=2 when the whole utterance is wake-shaped (<=3 words).
+_FUZZY_BLOCK = {"number", "remember", "december", "november", "amber",
+                "ember"}      # amber/ember excluded: strict regex owns them
+
+
+def _fuzzy_wake_span(heard: str) -> tuple[int, int] | None:
+    tokens = list(re.finditer(r"[A-Za-z]+", heard))
+    short = len(tokens) <= 3
+    for i, m in enumerate(tokens):
+        w = m.group().lower()
+        if w in _FUZZY_BLOCK:
+            continue
+        d = min(_lev(w, "ember"), _lev(w, "amber"))
+        if (d <= 1 and i <= 1) or (d <= 2 and short and i <= 1):
+            return m.start(), m.end()
+    return None
+
+
 def route(heard: str, awake: bool) -> tuple[str, str]:
     """Decide what to do with one transcript.
 
@@ -76,8 +109,9 @@ def route(heard: str, awake: bool) -> tuple[str, str]:
     if not re.search(r"[a-zA-Z]{2}", heard):
         return "ignore", ""             # whisper bracket-noise like '[ [ ['
     m = WAKE.search(heard)
-    if m:
-        q = (heard[:m.start()] + " " + heard[m.end():]).strip(" ,.!?")
+    span = (m.start(), m.end()) if m else _fuzzy_wake_span(heard)
+    if span:
+        q = (heard[:span[0]] + " " + heard[span[1]:]).strip(" ,.!?")
         if len(q.split()) >= 2:
             return "answer", q          # wake word + question in one breath
         if q.lower() in _ONE_WORD_TURNS:

@@ -136,3 +136,23 @@ class ContractionFollowupTest(unittest.TestCase):
                   "how's the water supply looking"):
             action, _ = route(q, True)
             self.assertEqual(action, "answer", f"{q!r} was dropped")
+
+
+class FuzzyWakeTest(unittest.TestCase):
+    # one evening of venue acoustics, verbatim
+    def test_mangled_wakes_still_wake(self):
+        for heard in ("Amor.", "- Pamber.", "a member.", "Ember?",
+                      "Embert."):
+            self.assertEqual(route(heard, False), ("wake", ""),
+                             f"missed wake: {heard!r}")
+
+    def test_mangled_wake_plus_question_answers(self):
+        action, q = route("Pamber, how do I purify creek water?", False)
+        self.assertEqual(action, "answer")
+        self.assertIn("purify", q)
+
+    def test_number_sentences_do_not_wake(self):
+        for heard in ("the number is nine", "Number one, get water.",
+                      "Remember to bring the water"):
+            action, _ = route(heard, False)
+            self.assertEqual(action, "ignore", f"false wake: {heard!r}")
