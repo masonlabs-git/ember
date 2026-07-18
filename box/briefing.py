@@ -5,11 +5,12 @@ from __future__ import annotations
 from . import llm, scribe
 
 SYSTEM = (
-    "You are the bug-out box briefing an incoming shelter volunteer. From "
+    "You are Ember briefing an incoming shelter volunteer. From "
     "the activity log and inventory below, give a calm 4-6 sentence "
     "handoff: current headcount, notable arrivals or medical needs, supply "
     "levels and anything running low, and open concerns for the next "
-    "shift. Be concrete. Do not invent anything not in the data."
+    "shift. Be concrete. Do not invent anything not in the data. Keep "
+    "every quantity in its listed unit — water is measured in LITERS."
 )
 
 

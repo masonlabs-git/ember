@@ -83,17 +83,58 @@ Prototype ~$410 off-the-shelf; modeled BOM ~$252 @1k units, ~$211 @10k;
 retail $499–599 with **zero recurring cost** (vs. Garmin inReach's hardware +
 monthly subscription). Software marginal cost is zero (open weights).
 
+## What Ember does (all offline, all on the box)
+
+- **"Hey Ember" wake word** — every utterance transcribed on the NPU and
+  routed by text; no hotword model. Box audibly responds in ~2 s.
+- **Grounded answers with receipts** — FTS5/BM25 over field manuals +
+  Wikipedia medicine; citations spoken-stripped but displayed; zero
+  retrieval hits → an honest "not in my field manuals," never invention.
+- **Emergency coaching** — one step at a time (token-cap enforced, not
+  prompt-hoped), advancing through the real protocol on "next."
+- **Face reunification** — consented intake photos from the box camera
+  (live viewfinder); find a missing person from any photo, by upload or
+  by standing in front of Ember; by voice: "do you recognize me?"
+  YuNet + SFace on CPU; photos never leave the box.
+- **Offline places** — OSM extract → 2,809 indexed POIs; "how far is the
+  nearest hospital?" answered with computed distance + compass bearing +
+  street. Deterministic; no LLM in the loop.
+- **Voice quartermaster** — "we gave out 40 liters of water" hits the
+  ledger (deterministic parse, gallons→liters), confirms remaining stock
+  and days-of-water at Sphere's 15 L/person/day.
+- **Disaster scribe** — voice intake interview, registry photo board,
+  staff mode (PIN) with audit-logged removals, LLM shift-change brief.
+- **Multilingual** — Spanish replies with automatic Spanish TTS voice.
+- **Comfort** — original bedtime stories (dedicated persona, no
+  citations) and a Gutenberg storybook shelf (Peter Rabbit, Grimm,
+  Aesop, Oz, Pooh) read aloud in the author's exact words, "next" to
+  continue.
+- **Every phone is its screen** — the box serves its own Wi-Fi AP
+  (SSID EMBER) with a live thought-stream dashboard, chat, intake, find.
+- **Resilience engineered** — boot-to-listening via systemd (~60 s,
+  hands-free recovery from any power event); self-testing STT service;
+  SD travel vault means even unplugging the storage drive leaves a fully
+  working box — it can run from a laptop USB-C port at ~9-11 W.
+- **Voices** — realtime Piper for answers; Kokoro-quality pre-synthesized
+  fixed lines (measured RTF ~3 on the Pi: too slow live, free canned).
+
 ## 3-minute demo script
 
 1. Unplug the router. "This box has no internet. On purpose."
-2. "How do I make creek water safe?" — spoken answer + citation on screen.
-3. Multilingual intake: register a Spanish-speaking arrival by voice.
-4. "How much water do 85 people need for three days?" — Sphere-cited math.
-5. "Twenty injured — walk me through triage." — START protocol, one step at
-   a time.
-6. Close on the body: Ember lives inside a hand-built WALL-E — it was
-   designed as his brain, and it moved in early. Power bank, price tag,
-   no subscription.
+2. "Hey Ember — how do I make creek water safe?" — ack in 2 s, cited
+   spoken answer; dashboard thought-stream on the phone.
+3. "My friend has a deep cut and it won't stop bleeding" → coach mode,
+   "next" → the protocol advances.
+4. "How far is the nearest hospital?" — offline map answer, computed.
+5. "We just gave out 40 liters of water" — ledger deducts, days-of-water
+   spoken. Then the shift brief.
+6. "Do you recognize me?" — camera + face match greets by name;
+   reunification board on the phone.
+7. "Tell me in Spanish how to purify water." — Spanish answer, Spanish
+   voice.
+8. Close on the body: Ember lives inside a hand-built WALL-E — designed
+   as his brain; it moved in early. Power bank, price tag, no
+   subscription. "And if the kids can't sleep — it reads Peter Rabbit."
 
 ## What's next
 
