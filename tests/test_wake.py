@@ -77,3 +77,29 @@ class StoryRoutingTest(unittest.TestCase):
                   "what's the story with the water supply",
                   "we gave out 20 blankets"):
             self.assertFalse(is_story(q), q)
+
+
+class DirectedFollowupTest(unittest.TestCase):
+    # verbatim from the failed kitchen demo: the box answered fragments
+    # of two people talking to each other inside the follow-up window
+    def test_room_chatter_ignored_in_window(self):
+        for chatter in (
+            "Oh, you've, got the clue, saying that tips randomly talking. "
+            "Yes. Oh, but it's a like, disaster recovery effort. - Edge "
+            "device. - I'm calling it. So think about like a couple "
+            "things that it does. One",
+            "FimoWorker has a device, right?",
+            "the embers.",
+            "Well, I'm putting this right here just inside the box.",
+        ):
+            self.assertEqual(route(chatter, True), ("ignore", ""),
+                             f"chatter answered: {chatter[:40]!r}")
+
+    def test_real_followups_still_flow(self):
+        for q in ("how do I purify creek water",
+                  "what about for a burn",
+                  "we just received 10 more gallons of water",
+                  "can you read peter rabbit",
+                  "done", "next"):
+            action, _ = route(q, True)
+            self.assertEqual(action, "answer", f"{q!r} was dropped")

@@ -42,6 +42,28 @@ _ONE_WORD_TURNS = {"done", "next", "repeat", "yes", "no", "okay", "ok",
                    "ready", "stop", "continue", "help"}
 
 
+# Follow-up utterances must LOOK aimed at the box. Field-tested: during
+# a kitchen conversation, one answered question opened the 25 s window
+# and the box then "answered" fragments of two people talking to each
+# other ("FimoWorker has a device, right?" -> a cited reply). Questions
+# to the box start like questions; room chatter doesn't.
+_DIRECTED_STARTS = {"how", "what", "where", "when", "why", "who", "which",
+                    "can", "could", "do", "does", "did", "is", "are",
+                    "should", "will", "would", "tell", "read", "show",
+                    "find", "give", "we", "i", "my", "help", "ember"}
+_MAX_FOLLOWUP_WORDS = 18
+
+
+def _directed(heard: str) -> bool:
+    words = heard.strip(" ,.!?").split()
+    if not words or len(words) > _MAX_FOLLOWUP_WORDS:
+        return False                    # long rambles are room talk
+    first = words[0].lower().strip(",.!?'\"")
+    if first in _DIRECTED_STARTS:
+        return True
+    return bool(re.search(r"\b(?:ember|amber)\b", heard, re.I))
+
+
 def route(heard: str, awake: bool) -> tuple[str, str]:
     """Decide what to do with one transcript.
 
@@ -60,7 +82,7 @@ def route(heard: str, awake: bool) -> tuple[str, str]:
         return "wake", ""               # bare wake — acknowledge and listen
     if awake:
         words = heard.strip(" ,.!?").split()
-        if len(words) >= 2:
+        if len(words) >= 2 and _directed(heard):
             return "answer", heard.strip()      # follow-up: no wake needed
         if len(words) == 1 and words[0].lower() in _ONE_WORD_TURNS:
             return "answer", words[0].lower()   # coach: 'done' / 'next'
