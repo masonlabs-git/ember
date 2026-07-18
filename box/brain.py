@@ -95,6 +95,19 @@ class Brain:
     def answer(self, question: str, system: str = None) -> str:
         """One full turn: retrieve, generate (streamed to speech), log."""
         emit("heard", text=question)
+        # places fast-path: "nearest hospital" answers are computed from
+        # the offline OSM index, not generated — exact and instant
+        try:
+            from . import nav
+            n = nav.maybe_answer(question)
+        except Exception:
+            n = None
+        if n:
+            emit("spoke", text=n, mode="places")
+            if not config.MUTE:
+                tts.speak(n)
+            self.history.append((question, n))
+            return n
         cont = question.lower().strip(" .!?") in _CONTINUATIONS
         # sticky interview: stay in the intake flow until it resolves.
         mode = "answer"

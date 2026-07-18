@@ -49,6 +49,7 @@ button{{background:#2f6a2f;color:#fff}}
 <span class=badge>OFFLINE &#10003;</span>
 <span class=badge ok>RAM {ram}</span>
 <nav><a href=/>mind</a><a href=/board>board</a><a href=/intake>intake</a>
+<a href=/find>find</a>
 <a href=/supplies>supplies</a><a href=/brief>brief</a><a href=/chat>ask</a>
 </nav></header><main>{body}</main>"""
 
@@ -107,6 +108,47 @@ def photo(rid: int):
         from flask import send_file
         return send_file(row[0])
     return "", 404
+
+
+@app.get("/find")
+def find_form():
+    return page("""<div class=card><b>Find a missing person by photo</b>
+      <br><small>Upload any photo of who you're looking for — the box
+      matches it against consented check-in photos. Photos never leave
+      this box.</small></div>
+      <form method=post action=/find enctype=multipart/form-data class=card>
+      <input type=file name=photo accept=image/* capture>
+      <button>search</button></form>""")
+
+
+@app.post("/find")
+def find():
+    from . import faces
+    f = request.files.get("photo")
+    if not f or not f.filename:
+        return redirect("/find")
+    from pathlib import Path as _P
+    qdir = _P(config.VAULT) / "photos"
+    qdir.mkdir(parents=True, exist_ok=True)
+    qpath = str(qdir / f"query-{int(time.time())}.jpg")
+    f.save(qpath)
+    _, s = conns()
+    results = faces.match(s, qpath, scribe.households(s))
+    emit("face_search", matches=len(results))
+    if not results:
+        return page("<div class=card>No face found in that photo — "
+                    "try a clearer, front-facing shot.</div>"
+                    "<a href=/find>try again</a>")
+    cards = []
+    for r in results[:3]:
+        t = time.strftime("%b %d %H:%M", time.localtime(r["ts"]))
+        badge = ("&#9989; likely match" if r["same_person"]
+                 else "possible match")
+        cards.append(
+            f"<div class=card><img src=/photo/{r['id']}>"
+            f"<b>{html.escape(r['names'])}</b> — {badge} "
+            f"({r['score']:.0%})<br><small>checked in {t}</small></div>")
+    return page("".join(cards) + "<a href=/find>search again</a>")
 
 
 @app.get("/supplies")

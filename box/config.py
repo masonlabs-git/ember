@@ -41,6 +41,16 @@ CHUNK_OVERLAP = 200
 
 DASHBOARD_PORT = int(os.environ.get("BOX_DASHBOARD_PORT", "8880"))
 
+# Face-match models (YuNet + SFace ONNX) live in the repo's models/ dir.
+MODELS_DIR = Path(os.environ.get("BOX_MODELS_DIR",
+                                 str(Path(__file__).parent.parent / "models")))
+
+# Offline places: POI index built from the OSM extract on the vault.
+# BOX_LAT/LON = where the box is standing; set once at the venue.
+POI_DB = Path(os.environ.get("BOX_POI_DB", str(VAULT / "pois.db")))
+BOX_LAT = float(os.environ.get("BOX_LAT", "40.3916"))   # Lehi, UT
+BOX_LON = float(os.environ.get("BOX_LON", "-111.8508"))
+
 # Mute: text-only mode for development off the box (no piper/aplay).
 MUTE = os.environ.get("BOX_MUTE", "") == "1"
 
