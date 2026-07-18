@@ -1,0 +1,14 @@
+[Unit]
+Description=Ember dashboard — thought stream, chat, intake (port 8880)
+After=network.target
+
+[Service]
+User=caleb
+WorkingDirectory=/home/caleb/bugout-box
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m box.dashboard
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
