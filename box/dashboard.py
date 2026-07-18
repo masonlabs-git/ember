@@ -379,7 +379,9 @@ def api_state():
 
 
 def main():
-    app.run(host="0.0.0.0", port=config.DASHBOARD_PORT)
+    _cam()          # sensor takes ~2s to wake — start it at boot, not on
+    #                 the first viewfinder request (which 503'd)
+    app.run(host="0.0.0.0", port=config.DASHBOARD_PORT, threaded=True)
 
 
 if __name__ == "__main__":
