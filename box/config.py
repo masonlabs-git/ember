@@ -11,7 +11,7 @@ MODEL = os.environ.get("BOX_MODEL", "gemma4:e2b")
 NUM_CTX = int(os.environ.get("BOX_NUM_CTX", "2048"))
 NUM_PREDICT = int(os.environ.get("BOX_NUM_PREDICT", "90"))
 
-STT_URL = os.environ.get("BOX_STT_URL", "http://localhost:8771/stt")
+# STT runs on the Hailo NPU via hailo-apps (see box/stt.py). No URL needed.
 
 PIPER_BIN = os.environ.get("BOX_PIPER_BIN",
                            str(Path.home() / "piper-venv/bin/piper"))
