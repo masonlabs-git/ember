@@ -122,6 +122,8 @@ def apply_txn(sconn, direction: str, qty: float, unit: str,
     item = _canonical_item(raw_item, stock)
     if gated and not (item in stock or unit or set(item.split()) & COMMON):
         return None
+    if unit and (unit == item or unit in item.split()):
+        unit = ""                     # router echo: "15 blankets of blankets"
     spoken = f"{_fmt_qty(qty)} {unit}".strip() if unit else _fmt_qty(qty)
     converted = ""
     if item == "water" and unit.startswith("gallon"):
