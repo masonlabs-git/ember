@@ -63,8 +63,8 @@ class QueryTest(unittest.TestCase):
 
     def test_need_questions_fall_through_to_rag(self):
         conn = fresh()
-        self.assertIsNone(quartermaster.maybe_answer(
-            "How much water do 85 people need for three days?", conn))
+        # (85-people need-questions now belong to the deterministic
+        # planner — see PlanningMathTest)
         self.assertIsNone(quartermaster.maybe_answer(
             "How do I purify creek water?", conn))
 
