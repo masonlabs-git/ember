@@ -60,3 +60,23 @@ class PersonaTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModeRoutingTest(unittest.TestCase):
+    def test_bleeding_routes_to_coach(self):
+        from box.brain import pick_persona
+        from box import persona
+        self.assertIs(pick_persona("my arm is bleeding badly"),
+                      persona.COACH)
+
+    def test_checkin_routes_to_interview(self):
+        from box.brain import pick_persona
+        from box import persona
+        self.assertIs(pick_persona("we just arrived, can you check us in"),
+                      persona.INTERVIEW)
+
+    def test_general_question_stays_answer(self):
+        from box.brain import pick_persona
+        from box import persona
+        self.assertIs(pick_persona("how much water do we need"),
+                      persona.ANSWER)

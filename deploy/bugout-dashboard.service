@@ -1,0 +1,15 @@
+[Unit]
+Description=bug-out box phone dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=caleb
+WorkingDirectory=/home/caleb/bugout-box
+Environment=BOX_VAULT=/media/caleb/Expansion/vault
+ExecStart=/usr/bin/python3 -m box.dashboard
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

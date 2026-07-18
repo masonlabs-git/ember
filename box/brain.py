@@ -6,7 +6,7 @@ import json
 import time
 from pathlib import Path
 
-from . import audio, config, llm, persona, retrieval, stt, tts
+from . import config, llm, persona, retrieval, stt, tts
 
 EVENTS = Path("/tmp/box-events.jsonl")
 
@@ -17,23 +17,50 @@ def emit(kind: str, **data) -> None:
         f.write(json.dumps(rec) + "\n")
 
 
+# Utterance-level mode switches. A hands-busy emergency wants one-step-at-a-
+# time coaching; intake wants the interview script; otherwise answer mode.
+_COACH_TRIGGERS = ("bleeding", "not breathing", "choking", "burn", "cut",
+                   "wound", "injured", "cpr", "help me", "triage",
+                   "broken", "seizure", "unconscious")
+_INTERVIEW_TRIGGERS = ("check in", "check us in", "register", "intake",
+                       "we just arrived", "sign in")
+
+
+def pick_persona(text: str) -> str:
+    t = text.lower()
+    if any(k in t for k in _INTERVIEW_TRIGGERS):
+        return persona.INTERVIEW
+    if any(k in t for k in _COACH_TRIGGERS):
+        return persona.COACH
+    return persona.ANSWER
+
+
 class Brain:
     def __init__(self):
         self.conn = retrieval.connect()
         self.history: list[tuple[str, str]] = []   # (user, box) turns
+        self.mode = persona.ANSWER
 
-    def answer(self, question: str) -> str:
+    def answer(self, question: str, system: str = None) -> str:
         """One full turn: retrieve, generate (streamed to speech), log."""
         emit("heard", text=question)
+        # sticky coaching/interview: stay in the flow until it resolves
+        if system is None:
+            picked = pick_persona(question)
+            if picked is not persona.ANSWER:
+                self.mode = picked
+            system = self.mode
         hits = retrieval.search(self.conn, question)
-        emit("retrieved", citations=[h.citation for h in hits])
+        emit("retrieved", citations=[h.citation for h in hits],
+             mode="coach" if system is persona.COACH else
+                  "interview" if system is persona.INTERVIEW else "answer")
         context = retrieval.context_block(hits)
         prompt = persona.build_prompt(question, context)
         if self.history:
             recent = "\n".join(f"User: {u}\nBox: {b}"
                                for u, b in self.history[-3:])
             prompt = f"RECENT CONVERSATION:\n{recent}\n\n{prompt}"
-        stream = llm.generate_stream(prompt, persona.ANSWER)
+        stream = llm.generate_stream(prompt, system)
         if config.MUTE:
             reply = "".join(stream).strip()
         else:
@@ -43,6 +70,7 @@ class Brain:
         return reply
 
     def loop(self) -> None:
+        from . import audio          # deferred: webrtcvad only on the Pi
         emit("status", state="warming model")
         llm.warmup()
         emit("status", state="ready")
