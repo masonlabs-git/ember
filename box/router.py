@@ -1,54 +1,104 @@
-"""LLM fallback router: when the regex fast-paths miss, ask Gemma what
-the user MEANT instead of guessing wrong.
+"""Native tool-calling router: when the regex fast-paths miss, Gemma
+picks a TOOL with typed arguments (ollama /api/chat function calling)
+instead of a hand-rolled JSON classification.
 
-Regexes stay first — they're instant and exact when they hit. This runs
-only for utterances that reached the answer stage but matched no fast
-path, costing ~2 s to route correctly instead of 0 s to route wrong.
-The classification is temperature-0 and returns slots; all execution
-(ledger math, map lookups) stays deterministic — the model classifies,
-it never computes.
+The model chooses; deterministic code executes. No tool call means the
+utterance is a normal question and the RAG handles it — always safe.
 """
 from __future__ import annotations
 
-import json
-import re
+import requests
 
-from . import llm
+from . import config
 
-_SYSTEM = "You classify requests for an offline emergency assistant. JSON only."
+_SYSTEM = ("You are Ember, an offline emergency shelter assistant. "
+           "If the request matches a tool, call it with exact "
+           "arguments. If it is a general survival, first-aid, or "
+           "how-to question, do NOT call a tool.")
 
-_PROMPT = """UTTERANCE: "{q}"
+TOOLS = [
+    {"type": "function", "function": {
+        "name": "check_stock",
+        "description": "Report how much of a supply is CURRENTLY on "
+                       "hand in the shelter ledger (not how much is "
+                       "needed or required).",
+        "parameters": {"type": "object", "properties": {
+            "item": {"type": "string",
+                     "description": "the supply, e.g. water, blankets"}},
+            "required": ["item"]}}},
+    {"type": "function", "function": {
+        "name": "log_supply",
+        "description": "Record supplies that were just handed out to "
+                       "people or received into storage.",
+        "parameters": {"type": "object", "properties": {
+            "direction": {"type": "string", "enum": ["in", "out"],
+                          "description": "in = received, out = given"},
+            "qty": {"type": "number"},
+            "unit": {"type": "string",
+                     "description": "liters, gallons, or empty"},
+            "item": {"type": "string"}},
+            "required": ["direction", "qty", "item"]}}},
+    {"type": "function", "function": {
+        "name": "nearest_place",
+        "description": "Find the nearest hospital, pharmacy, fire "
+                       "station, police, shelter, school, grocery "
+                       "store, gas station, drinking water, or church, "
+                       "with distance and direction.",
+        "parameters": {"type": "object", "properties": {
+            "place": {"type": "string"}}, "required": ["place"]}}},
+    {"type": "function", "function": {
+        "name": "water_planning",
+        "description": "Compute how much water a group needs for a "
+                       "number of days (Sphere standard).",
+        "parameters": {"type": "object", "properties": {
+            "people": {"type": "integer"},
+            "days": {"type": "integer"}},
+            "required": ["people", "days"]}}},
+    {"type": "function", "function": {
+        "name": "recognize_face",
+        "description": "Look through the camera and identify the "
+                       "person standing in front of the box.",
+        "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {
+        "name": "read_book",
+        "description": "Read a storybook from the shelf aloud (Peter "
+                       "Rabbit, Grimm, Andersen, Aesop, Wizard of Oz, "
+                       "Winnie-the-Pooh).",
+        "parameters": {"type": "object", "properties": {
+            "book": {"type": "string"}}, "required": ["book"]}}},
+    {"type": "function", "function": {
+        "name": "tell_story",
+        "description": "Make up and tell an original calming bedtime "
+                       "story.",
+        "parameters": {"type": "object", "properties": {}}}},
+]
 
-Classify into exactly one JSON object:
-- {{"kind":"stock","item":"<supply name>"}} — asking how much of a supply is CURRENTLY on hand / in storage. NOT how much is needed or required for some number of people or days — that is "question".
-- {{"kind":"supply","direction":"out|in","qty":<number>,"unit":"<unit or empty>","item":"<supply name>"}} — reporting supplies handed out or received.
-- {{"kind":"places","place":"<place type>"}} — asking where/how far the nearest place is.
-- {{"kind":"recognize"}} — asking to be recognized / who am I, via camera.
-- {{"kind":"read","book":"<book name>"}} — asking to read a specific book aloud.
-- {{"kind":"story"}} — asking for a made-up/bedtime story.
-- {{"kind":"question"}} — anything else: survival, first aid, how-to.
 
-JSON:"""
-
-
-def _extract_json(text: str) -> dict | None:
-    s, e = text.find("{"), text.rfind("}")
-    if s < 0 or e <= s:
-        return None
+def route_tools(question: str) -> tuple[str, dict] | None:
+    """(tool_name, arguments) from one temperature-0 chat turn, or None
+    for plain questions / any failure."""
+    body = {
+        "model": config.MODEL,
+        "messages": [{"role": "system", "content": _SYSTEM},
+                     {"role": "user", "content": question}],
+        "tools": TOOLS,
+        "stream": False,
+        "think": False,
+        "options": {"num_ctx": config.NUM_CTX, "num_predict": 100,
+                    "temperature": 0.0},
+        "keep_alive": -1,
+    }
     try:
-        d = json.loads(text[s:e + 1])
-        return d if isinstance(d, dict) and "kind" in d else None
-    except ValueError:
-        return None
-
-
-def classify(question: str) -> dict | None:
-    """One tiny temperature-0 call; None on any failure (caller falls
-    back to the RAG, which is always a safe answer)."""
-    try:
-        out = "".join(llm.generate_stream(
-            _PROMPT.format(q=question.replace('"', "'")), _SYSTEM,
-            num_predict=60, temperature=0.0))
-        return _extract_json(out)
-    except Exception:
+        r = requests.post(f"{config.OLLAMA_URL}/api/chat", json=body,
+                          timeout=(5, 60))
+        r.raise_for_status()
+        calls = (r.json().get("message") or {}).get("tool_calls") or []
+        if not calls:
+            return None
+        fn = calls[0].get("function") or {}
+        name, args = fn.get("name"), fn.get("arguments") or {}
+        if not name:
+            return None
+        return name, (args if isinstance(args, dict) else {})
+    except (requests.RequestException, ValueError, KeyError):
         return None

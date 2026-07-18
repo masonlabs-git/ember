@@ -174,15 +174,8 @@ _PLAN_PEOPLE = re.compile(r"(\d+)\s*(?:people|persons|adults|residents|"
 _PLAN_DAYS = re.compile(r"(\d+)\s*days?", re.I)
 
 
-def planning_reply(text: str, sconn) -> str | None:
-    t = _words_to_digits(text)
-    if "water" not in t.lower() or not re.search(r"\bneed", t, re.I):
-        return None
-    people = _PLAN_PEOPLE.search(t)
-    days = _PLAN_DAYS.search(t)
-    if not (people and days):
-        return None
-    n, d = int(people[1]), int(days[1])
+def plan_water(n: int, d: int, sconn) -> str:
+    """Exact Sphere water math + ledger shortfall. Ints in, words out."""
     total = n * SPHERE_L_PER_PERSON_DAY * d
     reply = (f"{n} people, times 15 liters, times {d} days: "
              f"{total:,} liters of water. That is Sphere's standard of "
@@ -196,6 +189,17 @@ def planning_reply(text: str, sconn) -> str | None:
             reply += (f" The ledger shows {_fmt_qty(have)} liters on "
                       f"hand — {total - have:,.0f} liters short.")
     return reply
+
+
+def planning_reply(text: str, sconn) -> str | None:
+    t = _words_to_digits(text)
+    if "water" not in t.lower() or not re.search(r"\bneed", t, re.I):
+        return None
+    people = _PLAN_PEOPLE.search(t)
+    days = _PLAN_DAYS.search(t)
+    if not (people and days):
+        return None
+    return plan_water(int(people[1]), int(days[1]), sconn)
 
 
 def maybe_answer(text: str, sconn=None) -> str | None:

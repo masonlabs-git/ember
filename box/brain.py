@@ -179,69 +179,86 @@ class Brain:
         self.last_mode = "reading"
         return text
 
+    def _tell_story(self, question: str) -> str:
+        emit("retrieved", citations=[], mode="story")
+        stream = llm.generate_stream(
+            f"REQUEST: {question}\nTell the story now.",
+            persona.STORY, num_predict=300)
+        if config.MUTE:
+            reply = "".join(stream).strip()
+        else:
+            reply = tts.speak_stream(stream, preroll=tts.next_ack())
+        emit("spoke", text=reply, mode="story")
+        self.history.append((question, reply))
+        self.last_mode = "story"
+        return reply
+
+    def _open_book(self, question: str, book_name: str) -> str | None:
+        from . import stories
+        book = stories.match_title(book_name)
+        if not book:
+            return None
+        title, filename = book
+        self.reading = (title, filename, 0)
+        if not config.MUTE:
+            tts.speak(f"{title}. Here we go.")
+        reply = self._read_next()
+        self.history.append((question, f"[opened {title}]"))
+        return reply
+
     def _route_with_llm(self, question: str) -> str | None:
-        """Gemma classifies the intent; deterministic code executes it.
-        Returns None for 'question' (or any failure) -> RAG proceeds."""
+        """Native tool calling: Gemma picks a tool with typed args; the
+        SYSTEM executes it deterministically. The model chooses — it
+        never computes. No tool call (or any failure) -> RAG."""
         try:
             from . import router
-            r = router.classify(question)
+            routed = router.route_tools(question)
         except Exception:
             return None
-        if not r:
+        if not routed:
             return None
-        kind = r.get("kind")
-        emit("routed", intent=kind)
+        name, args = routed
+        emit("routed", tool=name, args=args)
         try:
-            if (kind == "stock" and r.get("item")
+            from . import quartermaster, scribe
+            if (name == "check_stock" and args.get("item")
                     and not is_planning_question(question)):
-                from . import quartermaster, scribe
                 reply = quartermaster.stock_reply(
-                    scribe.connect(), str(r["item"]),
+                    scribe.connect(), str(args["item"]),
                     want_gallons="gallon" in question.lower())
                 return self._say(question, reply, "supplies")
-            if kind == "supply" and r.get("item") and r.get("qty"):
-                from . import quartermaster, scribe
-                direction = "in" if r.get("direction") == "in" else "out"
+            if name == "log_supply" and args.get("item") \
+                    and args.get("qty"):
+                direction = "in" if args.get("direction") == "in" \
+                    else "out"
                 reply = quartermaster.apply_txn(
-                    scribe.connect(), direction, float(r["qty"]),
-                    str(r.get("unit", "")), str(r["item"]))
+                    scribe.connect(), direction, float(args["qty"]),
+                    str(args.get("unit", "")), str(args["item"]))
                 if reply:
                     return self._say(question, reply, "supplies")
-            if kind == "places" and r.get("place"):
+            if name == "water_planning" and args.get("people") \
+                    and args.get("days"):
+                reply = quartermaster.plan_water(
+                    int(args["people"]), int(args["days"]),
+                    scribe.connect())
+                return self._say(question, reply, "supplies")
+            if name == "nearest_place" and args.get("place"):
                 from . import nav
-                reply = nav.answer_for(str(r["place"]))
+                reply = nav.answer_for(str(args["place"]))
                 if reply:
                     return self._say(question, reply, "places")
-            if kind == "recognize":
-                return self._say(question, self._recognize(), "recognize")
-            if kind == "read" and r.get("book"):
-                from . import stories
-                book = stories.match_title(str(r["book"]))
-                if book:
-                    title, filename = book
-                    self.reading = (title, filename, 0)
-                    if not config.MUTE:
-                        tts.speak(f"{title}. Here we go.")
-                    reply = self._read_next()
-                    self.history.append((question, f"[opened {title}]"))
-                    return reply
-            if kind == "story":
-                emit("retrieved", citations=[], mode="story")
-                stream = llm.generate_stream(
-                    f"REQUEST: {question}\nTell the story now.",
-                    persona.STORY, num_predict=300)
-                if config.MUTE:
-                    reply = "".join(stream).strip()
-                else:
-                    reply = tts.speak_stream(stream,
-                                             preroll=tts.next_ack())
-                emit("spoke", text=reply, mode="story")
-                self.history.append((question, reply))
-                self.last_mode = "story"
-                return reply
+            if name == "recognize_face":
+                return self._say(question, self._recognize(),
+                                 "recognize")
+            if name == "read_book" and args.get("book"):
+                opened = self._open_book(question, str(args["book"]))
+                if opened:
+                    return opened
+            if name == "tell_story":
+                return self._tell_story(question)
         except Exception as e:
-            emit("error", stage="router-dispatch", detail=str(e))
-        return None                       # "question" or anything odd -> RAG
+            emit("error", stage="tool-dispatch", detail=str(e)[:200])
+        return None                     # unknown tool / failed -> RAG
 
     def _say(self, question: str, reply: str, mode: str) -> str:
         emit("spoke", text=reply, mode=mode)
@@ -307,18 +324,7 @@ class Brain:
         # comfort fast-path: stories skip retrieval, drop the citation
         # rules, and get a real token budget
         if system is None and is_story(question):
-            emit("retrieved", citations=[], mode="story")
-            stream = llm.generate_stream(
-                f"REQUEST: {question}\nTell the story now.",
-                persona.STORY, num_predict=300)
-            if config.MUTE:
-                reply = "".join(stream).strip()
-            else:
-                reply = tts.speak_stream(stream, preroll=tts.next_ack())
-            emit("spoke", text=reply, mode="story")
-            self.history.append((question, reply))
-            self.last_mode = "story"
-            return reply
+            return self._tell_story(question)
         # quartermaster fast-path: spoken supply transactions and stock
         # queries hit the ledger directly — inventory must be exact
         try:
