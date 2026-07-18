@@ -81,3 +81,16 @@ class ModeRoutingTest(unittest.TestCase):
         from box import persona
         self.assertIs(pick_persona("how much water do we need"),
                       persona.ANSWER)
+
+
+class CitationStripTest(unittest.TestCase):
+    def test_strips_single_and_multi(self):
+        from box.tts import strip_citations
+        self.assertEqual(strip_citations("Boil water [1]."), "Boil water.")
+        self.assertEqual(strip_citations("Use bleach [1, 2]."), "Use bleach.")
+        self.assertEqual(strip_citations("A [1] and B [2,3] end."),
+                         "A and B end.")
+
+    def test_apply_shim_also_strips(self):
+        from box.tts import apply_shim
+        self.assertNotIn("[", apply_shim("The bugout box says [1]."))

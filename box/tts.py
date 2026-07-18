@@ -23,9 +23,17 @@ PRONOUNCE = {
 _SENT_END = re.compile(r"([.!?])\s")
 _ES_HINT = re.compile(
     r"\b(el|la|los|las|es|para|agua|de|una|con|usted|por)\b", re.I)
+# Citation markers like [1], [2], [1, 2], [1,2,3] — shown on screen, not spoken.
+_CITES = re.compile(r"\s*\[\s*\d+(?:\s*,\s*\d+)*\s*\]")
+
+
+def strip_citations(text: str) -> str:
+    """Remove [1]/[1, 2] markers before speech (they belong on the display)."""
+    return _CITES.sub("", text).strip()
 
 
 def apply_shim(text: str) -> str:
+    text = strip_citations(text)
     for word, spoken in PRONOUNCE.items():
         text = re.sub(rf"\b{word}\b", spoken, text, flags=re.I)
     return text
