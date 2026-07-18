@@ -110,9 +110,12 @@ class Brain:
         emit("retrieved", citations=[h.citation for h in hits], mode=mode)
         context = retrieval.context_block(hits)
         if cont and mode == "coach":
-            ask = (f"The user said '{question}'. Continue coaching for: "
-                   f"{self.topic} — give the NEXT step, one you have not "
-                   "already given above.")
+            done_steps = "; ".join(
+                tts.strip_citations(b) for _, b in self.history[-3:])
+            ask = (f"Emergency: {self.topic}\nThe user has ALREADY "
+                   f"COMPLETED these steps: {done_steps}\nThey said "
+                   f"'{question}'. Give the ONE next, different step. Do "
+                   "not repeat a completed step.")
         elif question.lower().strip(" .!?") == "repeat":
             ask = (f"Repeat your previous instruction for '{self.topic}' "
                    "in different words.")
