@@ -5,10 +5,13 @@ sentence two still generates.
 """
 from __future__ import annotations
 
+import os
+import queue
 import re
 import subprocess
 import tempfile
-from typing import Iterable, Iterator
+import threading
+from typing import Callable, Iterable, Iterator
 
 from . import config
 
@@ -82,17 +85,39 @@ def speak(text: str, voice: str = None) -> None:
     play(synth(text, voice))
 
 
-def speak_stream(fragments: Iterable[str]) -> str:
+def speak_stream(fragments: Iterable[str],
+                 on_event: Callable[[str], None] = None) -> str:
     """Speak a token stream sentence-by-sentence. Returns the full text.
-    Synthesis of sentence N+1 overlaps playback of sentence N."""
+
+    A dedicated player thread makes the overlap real: synthesis of
+    sentence N+1 (and Gemma's generation of N+2) proceed WHILE sentence N
+    is audible. The previous version played inline, which serialized
+    playback against synthesis and stalled the token stream.
+
+    `on_event` (optional) gets "sentence" when a sentence completes from
+    the stream and "audio" when a wav starts playing — chain_test uses it
+    to timestamp first-speech.
+    """
+    wavs: queue.Queue = queue.Queue()
+
+    def player():
+        while True:
+            wav = wavs.get()
+            if wav is None:
+                return
+            if on_event:
+                on_event("audio")
+            play(wav)
+            os.unlink(wav)                    # synth() leaves temp files
+
+    th = threading.Thread(target=player, daemon=True)
+    th.start()
     spoken: list[str] = []
-    pending_wav = None
     for sent in sentences(fragments):
-        wav = synth(sent, pick_voice(sent))
-        if pending_wav:
-            play(pending_wav)
-        pending_wav = wav
+        if on_event:
+            on_event("sentence")
+        wavs.put(synth(sent, pick_voice(sent)))
         spoken.append(sent)
-    if pending_wav:
-        play(pending_wav)
+    wavs.put(None)
+    th.join()
     return " ".join(spoken)

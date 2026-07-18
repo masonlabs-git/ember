@@ -1,0 +1,12 @@
+[Unit]
+Description=Bugout box resident Whisper STT service (Hailo-10H NPU)
+After=multi-user.target
+
+[Service]
+User=caleb
+ExecStart=/usr/bin/python3 /home/caleb/bugout-box/box/whisper_service.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

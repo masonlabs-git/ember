@@ -27,6 +27,7 @@ os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
 import socket
 import subprocess
 import sys
+import threading
 
 import numpy as np
 
@@ -88,6 +89,32 @@ def _preprocess(audio: np.ndarray, mel_filters: np.ndarray,
     return mels
 
 
+def _selftest(pipeline, mel_filters, chunk_length: int) -> None:
+    """Prove one chunk round-trips through the NPU before serving.
+
+    WhisperPipeline's constructor returns even when its inference thread
+    dies (e.g. HAILO_OUT_OF_PHYSICAL_DEVICES because another process holds
+    the device) — without this check the service would bind the socket,
+    print 'ready', and every client would hang forever. Exit nonzero so
+    systemd's Restart=on-failure retries until the NPU is actually free.
+    """
+    result = {}
+
+    def run():
+        silent = np.zeros(SAMPLE_RATE, np.float32)      # 1s of silence
+        pipeline.send_data(_preprocess(silent, mel_filters, chunk_length)[0])
+        result["text"] = pipeline.get_transcription()
+
+    th = threading.Thread(target=run, daemon=True)
+    th.start()
+    th.join(30)
+    if th.is_alive() or "text" not in result:
+        print("whisper-service self-test FAILED — NPU busy or pipeline "
+              "dead; exiting for systemd to retry", flush=True)
+        os._exit(1)
+    print("self-test ok", flush=True)
+
+
 def main() -> None:
     sys.path.insert(0, APP_DIR)
     from whisper_pipeline import WhisperPipeline          # no torch inside
@@ -98,6 +125,7 @@ def main() -> None:
     pipeline = WhisperPipeline(ENCODER, DECODER, variant="base",
                                npy_dir=NPY_DIR, add_embed=False)
     chunk_length = pipeline.get_chunk_length()
+    _selftest(pipeline, mel_filters, chunk_length)
 
     if os.path.exists(SOCK):
         os.unlink(SOCK)

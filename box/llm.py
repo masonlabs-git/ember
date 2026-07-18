@@ -11,8 +11,14 @@ from . import config
 
 
 def generate_stream(prompt: str, system: str,
-                    num_predict: int = None) -> Iterator[str]:
-    """Yield response text fragments as they generate."""
+                    num_predict: int = None,
+                    stats: dict = None) -> Iterator[str]:
+    """Yield response text fragments as they generate.
+
+    Pass a dict as `stats` to receive ollama's timing numbers from the
+    final message (prompt_eval_* = prefill, eval_* = generation) — the
+    split that tells you which side of inference is eating the latency.
+    """
     body = {
         "model": config.MODEL,
         "system": system,
@@ -35,6 +41,12 @@ def generate_stream(prompt: str, system: str,
             if d.get("response"):
                 yield d["response"]
             if d.get("done"):
+                if stats is not None:
+                    for k in ("prompt_eval_count", "prompt_eval_duration",
+                              "eval_count", "eval_duration",
+                              "load_duration", "total_duration"):
+                        if k in d:
+                            stats[k] = d[k]
                 return
 
 
@@ -42,10 +54,17 @@ def generate(prompt: str, system: str, num_predict: int = None) -> str:
     return "".join(generate_stream(prompt, system, num_predict))
 
 
-def warmup() -> bool:
-    """Pin the model resident (boot-time; cold load measured at ~2 min)."""
+def warmup(system: str = None) -> bool:
+    """Pin the model resident (boot-time; cold load measured at ~2 min).
+
+    Pass the persona the box will actually answer with: ollama caches the
+    KV of the previous request's prefix, and the system prompt is the
+    prefix — warming with the real persona means the first live query
+    skips re-prefilling it.
+    """
     try:
-        generate("ready", "Reply with exactly: ready", num_predict=4)
+        generate("ready", system or "Reply with exactly: ready",
+                 num_predict=4)
         return True
     except requests.RequestException:
         return False

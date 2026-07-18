@@ -72,7 +72,7 @@ class Brain:
     def loop(self) -> None:
         from . import audio          # deferred: webrtcvad only on the Pi
         emit("status", state="warming model")
-        llm.warmup()
+        llm.warmup(persona.ANSWER)
         emit("status", state="ready")
         tts.speak("Bug-out box ready.")
         while True:

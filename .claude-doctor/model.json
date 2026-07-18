@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "savedAt": "2026-07-18T04:57:44.163Z",
+  "totalSessions": 139,
+  "totalProjects": 7,
+  "signalBaselines": {
+    "edit-thrashing": 9,
+    "repeated-instructions": 7,
+    "rapid-corrections": 4
+  },
+  "projects": [
+    {
+      "projectPath": "Users/calebmason/Clicklease/trds/build/title/registration/document/service",
+      "sessionCount": 2,
+      "overallScore": -2622.398907103825,
+      "signalFrequency": {
+        "edit-thrashing": 1,
+        "repeated-instructions": 1,
+        "rapid-corrections": 1,
+        "extreme-frustration": 2,
+        "negative-sentiment": 2,
+        "error-loop": 7
+      },
+      "topIssues": [
+        "73 file(s) edited 5+ times. Worst: /Users/calebmason/Clicklease/trds-build/title-registration-document-service/agent-env/agent/loop.py (53x)",
+        "User repeated similar instructions 119 time(s). The agent failed to act on the instruction correctly.",
+        "149 user messages sent within 10 seconds of the agent responding. Rapid follow-ups indicate the agent's output was immediately wrong.",
+        "Worst single message score: -23",
+        "Average sentiment score: -11.00 across 1 messages"
+      ],
+      "suggestions": []
+    },
+    {
+      "projectPath": "Users/calebmason",
+      "sessionCount": 96,
+      "overallScore": -180.95661554869358,
+      "signalFrequency": {
+        "edit-thrashing": 37,
+        "repeated-instructions": 20,
+        "rapid-corrections": 35,
+        "extreme-frustration": 47,
+        "excessive-exploration": 1,
+        "negative-sentiment": 67,
+        "negative-drift": 26,
+        "error-loop": 22,
+        "restart-cluster": 20,
+        "high-abandonment-rate": 1
+      },
+      "topIssues": [
+        "51 file(s) edited 5+ times. Worst: /Users/calebmason/Clicklease/mco-scan-service/src/main/resources/static/index.html (87x)",
+        "User repeated similar instructions 62 time(s). The agent failed to act on the instruction correctly.",
+        "16 file(s) edited 5+ times. Worst: /Users/calebmason/Clicklease/titan-v4/WILFRIDO-DEPLOY-REQUEST.md (35x)",
+        "14 file(s) edited 5+ times. Worst: /Users/calebmason/.claude/projects/-Users-calebmason/memory/project_sf_exit_crm_rust.md (15x)",
+        "User repeated similar instructions 35 time(s). The agent failed to act on the instruction correctly."
+      ],
+      "suggestions": []
+    },
+    {
+      "projectPath": "Users/calebmason/Clicklease/title/reg/autoqueue/service",
+      "sessionCount": 1,
+      "overallScore": -46.333333333333336,
+      "signalFrequency": {
+        "extreme-frustration": 1,
+        "negative-drift": 1,
+        "negative-sentiment": 1
+      },
+      "topIssues": [
+        "Worst single message score: -8",
+        "User messages became shorter and more corrective over the session (drift: 3.2). Indicates growing frustration.",
+        "Average sentiment score: -1.17 across 6 messages"
+      ],
+      "suggestions": []
+    },
+    {
+      "projectPath": "Users/calebmason/Clicklease/tcpa/server/setup",
+      "sessionCount": 1,
+      "overallScore": -4,
+      "signalFrequency": {
+        "negative-sentiment": 1
+      },
+      "topIssues": [
+        "Average sentiment score: -2.00 across 1 messages"
+      ],
+      "suggestions": []
+    },
+    {
+      "projectPath": "Users/calebmason//claude/projects//Users/calebmason/memory",
+      "sessionCount": 36,
+      "overallScore": -3.3055555555555554,
+      "signalFrequency": {
+        "excessive-exploration": 2,
+        "high-abandonment-rate": 1,
+        "edit-thrashing": 2,
+        "restart-cluster": 1
+      },
+      "topIssues": [
+        "Read-to-edit ratio: 14.0:1 (14 reads, 1 edits). Agent explored excessively before acting.",
+        "36/36 sessions (100%) had fewer than 3 user messages",
+        "Read-to-edit ratio: 10.0:1 (10 reads, 1 edits). Agent explored excessively before acting.",
+        "1 file(s) edited 5+ times. Worst: /Users/calebmason/.claude/projects/-Users-calebmason/memory/api-keys.md (6x)",
+        "1 file(s) edited 5+ times. Worst: /Users/calebmason/.claude/projects/-Users-calebmason/memory/api-keys.md (5x)"
+      ],
+      "suggestions": []
+    },
+    {
+      "projectPath": "Users/calebmason//claude/projects//Users/calebmason",
+      "sessionCount": 2,
+      "overallScore": -3,
+      "signalFrequency": {
+        "restart-cluster": 1
+      },
+      "topIssues": [
+        "2 sessions started within 0 minutes — likely repeated restarts"
+      ],
+      "suggestions": []
+    },
+    {
+      "projectPath": "Users/calebmason/curotutor/ha/migration/curotutor",
+      "sessionCount": 1,
+      "overallScore": 0,
+      "signalFrequency": {},
+      "topIssues": [],
+      "suggestions": []
+    }
+  ],
+  "globalSuggestions": [
+    "Read the full file before editing. Plan all changes, then make ONE complete edit. If you've edited a file 3+ times, stop and re-read the user's requirements.",
+    "Re-read the user's last message before responding. Follow through on every instruction completely.",
+    "Double-check your output before presenting it. Verify that your changes actually address what the user asked for.",
+    "When the user corrects you, stop and re-read their message. Quote back what they asked for and confirm before proceeding.",
+    "Every few turns, re-read the original request to make sure you haven't drifted from the goal.",
+    "After 2 consecutive tool failures, stop and change your approach entirely. Explain what failed and try a different strategy.",
+    "When stuck, summarize what you've tried and ask the user for guidance instead of retrying the same approach.",
+    "Act sooner. Don't read more than 3-5 files before making a change. Get a basic understanding, make the change, then iterate."
+  ]
+}
