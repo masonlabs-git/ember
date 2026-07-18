@@ -25,6 +25,7 @@ def _stream(url: str, model: str, prompt: str, system: str,
             # model-card default is 1.0; an emergency assistant wants
             # consistent, instruction-tight answers, not creative ones
             "temperature": 0.7 if temperature is None else temperature,
+            "num_thread": config.NUM_THREAD,
         },
         "keep_alive": keep_alive,
     }

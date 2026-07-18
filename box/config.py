@@ -43,6 +43,10 @@ HUB_MODEL = os.environ.get("BOX_HUB_MODEL", "gemma4:12b-it-qat")
 # RAM the 8GB box cannot spare next to the resident model.
 NUM_CTX = int(os.environ.get("BOX_NUM_CTX", "1536"))
 NUM_PREDICT = int(os.environ.get("BOX_NUM_PREDICT", "80"))
+# 3 threads, not 4: the venue supply is an Apple brick (5V caps at 3A =
+# 15W) and 4-thread Gemma bursts crest it — firmware-confirmed
+# undervolt (0x50000) and two hard deaths. ~2s slower per answer, alive.
+NUM_THREAD = int(os.environ.get("BOX_NUM_THREAD", "3"))
 
 # STT runs on the Hailo NPU via hailo-apps (see box/stt.py). No URL needed.
 
